@@ -1,5 +1,5 @@
 """Classical PDE solution gallery."""
-import time, os
+import os
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,41 +30,43 @@ MODELS = {
         EvolutionEquation(["3*u^2*D[D[u]] + 6*u*D[u]*D[u]"]),
 }
 
-dt, T = 0.001, 1.0
-t_span = np.arange(dt, T + dt, dt)
-x_axis = np.linspace(0, 2*np.pi, 1001)[:-1]
+DT = 0.001
+# NLS with the shared multi-modal IC is unstable past t ~ 0.5;
+# use a shorter integration window so all 5 snapshots are valid.
+T_DEFAULT = 1.0
+T_NLS = 0.45
+
+x_axis = np.linspace(0, 2 * np.pi, 1001)[:-1]
 Nx = len(x_axis)
 
-# Single-component initial condition (shared by all models)
+# Shared initial condition
 y0_real = (
-    0.6 + 0.3*np.sin(x_axis) + 0.15*np.sin(2*x_axis)
-    + 0.1*np.cos(3*x_axis) + 0.02*np.cos(4*x_axis)
+    0.6 + 0.3 * np.sin(x_axis) + 0.15 * np.sin(2 * x_axis)
+    + 0.1 * np.cos(3 * x_axis) + 0.02 * np.cos(4 * x_axis)
 )
-# Two-component IC for NLS: same real part, zero imaginary part
 y0_nls = np.concatenate([y0_real, np.zeros(Nx)])
 
 n = len(MODELS)
 cols = 3
 rows = (n + cols - 1) // cols
-fig, axes = plt.subplots(rows, cols, figsize=(4*cols, 3*rows), sharex=True)
+fig, axes = plt.subplots(rows, cols, figsize=(4 * cols, 3 * rows), sharex=True)
 axes = axes.flatten()
 
 for idx, (name, model) in enumerate(MODELS.items()):
     print(f"[{idx+1}/{n}] {name}", flush=True)
-    t0 = time.time()
     model.wrap(name.replace(" ", "_"))
-    dt_compile = time.time() - t0
 
+    T = T_NLS if model.complex else T_DEFAULT
+    t_span = np.arange(DT, T + DT, DT)
     y0 = y0_nls if model.complex else y0_real
-
-    t0 = time.time()
     sol = model.solve(y0, t_span, rtol=1e-6, atol=1e-6)
-    dt_solve = time.time() - t0
 
+    # 5 evenly-spaced snapshots
+    stride = max(len(t_span) // 5, 1)
     for k in range(5):
-        axes[idx].plot(x_axis, sol[k*200, :Nx], linewidth=0.6)
-    axes[idx].set_title(f"{name}\n{dt_compile:.0f}s + {dt_solve:.0f}s", fontsize=9)
-    axes[idx].set_xlim(0, 2*np.pi)
+        axes[idx].plot(x_axis, sol[k * stride, :Nx], linewidth=0.6)
+    axes[idx].set_title(name, fontsize=9)
+    axes[idx].set_xlim(0, 2 * np.pi)
 
 for j in range(n, len(axes)):
     axes[j].set_visible(False)
