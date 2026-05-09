@@ -35,15 +35,13 @@ t_span = np.arange(dt, T + dt, dt)
 x_axis = np.linspace(0, 2*np.pi, 1001)[:-1]
 Nx = len(x_axis)
 
-# Single-component initial condition (used for real models)
+# Single-component initial condition (shared by all models)
 y0_real = (
     0.6 + 0.3*np.sin(x_axis) + 0.15*np.sin(2*x_axis)
     + 0.1*np.cos(3*x_axis) + 0.02*np.cos(4*x_axis)
 )
-# Two-component initial condition for NLS (ψ₀ = sech(x-π); v₀ = 0)
-y0_nls_u = 2.0 / np.cosh(x_axis - np.pi)
-y0_nls_v = np.zeros(Nx)
-y0_nls = np.concatenate([y0_nls_u, y0_nls_v])
+# Two-component IC for NLS: same real part, zero imaginary part
+y0_nls = np.concatenate([y0_real, np.zeros(Nx)])
 
 n = len(MODELS)
 cols = 3
