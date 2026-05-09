@@ -1,0 +1,116 @@
+# opid — Operator Identification from PDE Trajectory Data
+
+`opid` provides a sklearn-style API for identifying nonlinear PDE operators
+from simulated or measured trajectory data.
+
+## Installation
+
+```bash
+cd opid/
+pip install -r requirements.txt
+pip install -e .
+```
+
+For MILP support, `pyscipopt` and `cylp` are included in `requirements.txt`.
+
+## Quick Start
+
+```python
+from opid import PDESimulator, FeatureLibrary, OperatorIdentifier
+
+# 1. Simulate KdV: u_t = -6 u u_x - u_xxx
+sim = PDESimulator.kdv(N=256, T=0.05, n_t=100, n_modes=8, seed=42)
+U, U_t = sim.run()
+
+# 2. Build a feature library
+lib = FeatureLibrary(poly_degree=3, max_deriv=4, max_cross_degree=4)
+Theta, names = lib.build(U, sim.k)
+
+# 3. Recover the operator
+result = OperatorIdentifier(method="omp", n_nonzero=2).fit(Theta, U_t.ravel(), names)
+print(result)
+# → u_xxx: -1.00,  u u_x: -6.00
+```
+
+## Supported PDEs
+
+| Factory method | Equation |
+|----------------|----------|
+| `PDESimulator.kdv()` | u_t = -6 u u_x - u_xxx |
+| `PDESimulator.ks()` | u_t = -u u_x - u_xx - u_xxxx |
+| `PDESimulator.burgers(nu=0.05)` | u_t = -u u_x + ν u_xx |
+| `PDESimulator.allen_cahn(eps=0.01)` | u_t = ε u_xx + u - u³ |
+| `PDESimulator.fisher_kpp(D=0.01, r=1.0)` | u_t = D u_xx + r u(1-u) |
+| `PDESimulator.nls(sigma=1.0)` | i ψ_t + ψ_xx + σ\|ψ\|² ψ = 0 |
+| `PDESimulator.custom(rhs_str)` | Arbitrary Mathematica-string RHS |
+
+All simulations use periodic boundary conditions on [0, 2π] with
+FFTW-accelerated spectral integration (numpy fallback when g++/fftw3
+are unavailable).
+
+## Recovery Methods
+
+| Method | Key | Description |
+|--------|-----|-------------|
+| OMP | `'omp'` | Orthogonal Matching Pursuit — fast, column-normalised |
+| LassoCV | `'lasso'` | Column-normalised LassoCV with threshold truncation and OLS debiasing |
+| L0 MILP | `'l0_pareto'` | Bisection-based MILP Pareto sweep with SCIP/CBC solvers |
+
+## Examples
+
+### PDE Identification
+```bash
+python examples/kdv_identification.py        # KdV: J=1.00 all methods
+python examples/burgers_identification.py    # Burgers: J=1.00 all methods
+python examples/allen_cahn_identification.py # Allen-Cahn: J=1.00 OMP + MILP
+python examples/ks_identification.py         # KS: J=1.00 MILP only
+python examples/fkpp_identification.py       # FKPP: J=1.00 MILP only
+```
+
+### B-spline Smoothing
+```bash
+python examples/bspline_smoothing.py   # Smooths noisy U before differentiation
+```
+
+### All PDEs
+```bash
+python examples/run_all.py             # All 5 PDEs with OMP + Lasso
+```
+
+## Feature Library
+
+```python
+lib = FeatureLibrary(
+    poly_degree=3,        # max polynomial degree (u, u², u³)
+    max_deriv=4,          # max spatial derivative order (u_xxxx)
+    max_cross_degree=4,   # max total degree in cross-terms (e.g. u²·u_xx)
+    include_constant=True,
+    smooth=False,         # set True for B-spline pre-smoothing
+    smooth_degree=5,      # B-spline polynomial degree
+    smooth_n_knots=25,    # number of knot intervals
+)
+Theta, names = lib.build(U, k)
+```
+
+Spatial derivatives are computed via FFT (machine-precision on smooth data).
+When `smooth=True`, each spatial snapshot is projected onto a B-spline
+basis before differentiation, improving derivative quality for noisy data.
+
+## Architecture
+
+```
+opid/
+├── simulator.py    # PDESimulator — spectral PDE integrator
+├── library.py      # FeatureLibrary — candidate term dictionary
+├── recovery.py     # OperatorIdentifier — OMP / LassoCV / MILP
+├── _backend/       # SpectralEngine — FFTW-accelerated solver
+├── _bspline/       # B-spline design matrix (Cython extension)
+├── utils.py        # add_noise, jaccard_score, print_recovery_table
+└── examples/       # Usage examples
+```
+
+## Testing
+
+```bash
+python -m pytest tests/ -v
+```
