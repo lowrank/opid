@@ -44,6 +44,20 @@ print(result)
 | `PDESimulator.nls(sigma=1.0)` | i ψ_t + ψ_xx + σ\|ψ\|² ψ = 0 |
 | `PDESimulator.custom(rhs_str)` | Arbitrary Mathematica-string RHS |
 
+For coupled two-variable systems (u, v) such as NLS, Sine-Gordon, or
+FitzHugh-Nagumo in first-order form, pass a two-tuple of RHS strings:
+
+```python
+# NLS: u_t = -v_xx - σ(u²+v²)v, v_t = u_xx + σ(u²+v²)u
+sim = PDESimulator.custom(
+    ("-D[D[v]] - 1.0*(u^2+v^2)*v", "D[D[u]] + 1.0*(u^2+v^2)*u"),
+    name="NLS",
+)
+```
+
+The RHS string syntax supports `D[u]` (first derivative), `Sin`, `Cos`,
+`Exp`, `Log`, `Abs`, and arbitrary polynomial combinations of `u` and `v`.
+
 All simulations use periodic boundary conditions on [0, 2π] with
 FFTW-accelerated spectral integration (numpy fallback when g++/fftw3
 are unavailable).
@@ -117,9 +131,9 @@ python examples/gallery.py     # generates docs/example.png
 
 ![Classical PDE solutions](docs/example.png)
 
-Solves 8 classical evolution equations (KdV-Burgers, KS, Ginzburg-Landau,
-FitzHugh-Nagumo, Fisher-KPP, Swift-Hohenberg, Eikonal, Porous Media) on
-[0, 2π] and plots solution snapshots.
+Solves 9 classical evolution equations (KdV-Burgers, KS, Ginzburg-Landau,
+FitzHugh-Nagumo, Fisher-KPP, Nonlinear Schrödinger, Swift-Hohenberg, Eikonal,
+Porous Media) on [0, 2π] and plots solution snapshots.
 
 ## Testing
 

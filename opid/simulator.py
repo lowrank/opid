@@ -24,11 +24,14 @@ Supported equations (factory methods)
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+import logging
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
 from opid._backend import SpectralEngine
+
+logger = logging.getLogger(__name__)
 
 
 # ── Initial-condition helpers ────────────────────────────────────────────
@@ -111,6 +114,96 @@ def _build_nls_rhs(N: int, sigma: float):
     return rhs
 
 
+# ── Generic numpy RHS builders (sympy lambdify) ─────────────────────────
+
+def _build_custom_rhs(N: int, rhs_str: str):
+    """Build a numpy RHS for a single-component custom PDE.
+
+    Parses the Mathematica-string RHS with sympy and lambdifies it,
+    mapping ``D`` to a numpy spectral-derivative closure.  Provides a
+    fallback when g++/fftw3 compilation is unavailable.
+    """
+    from sympy.parsing.mathematica import parse_mathematica
+    from sympy import lambdify, Symbol
+
+    k = np.fft.rfftfreq(N, d=1.0 / N)
+
+    def _D(arg):
+        arg = np.asarray(arg, dtype=np.float64)
+        U_hat = np.fft.rfft(arg)
+        # Apply derivative filter: multiply by i*k (skip DC and Nyquist to
+        # match FFTW D() behaviour — see extra.h).
+        U_hat *= 1j * k
+        U_hat[0] = 0.0
+        if N % 2 == 0:
+            U_hat[N // 2] = 0.0
+        return np.fft.irfft(U_hat, n=N)
+
+    _ns = {
+        'D': _D, 'sin': np.sin, 'cos': np.cos, 'tan': np.tan,
+        'log': np.log, 'exp': np.exp, 'Abs': np.abs,
+        'atan': np.arctan, 'asin': np.arcsin, 'acos': np.arccos,
+    }
+
+    expr = parse_mathematica(rhs_str)
+    u_sym = Symbol('u')
+    f = lambdify(u_sym, expr, modules=[_ns, 'numpy'])
+
+    def rhs(u: np.ndarray) -> np.ndarray:
+        return np.asarray(f(u), dtype=np.float64)
+
+    return rhs
+
+
+def _build_custom_complex_rhs(N: int, rhs_real_str: str, rhs_complex_str: str):
+    """Build a numpy RHS for a two-component custom PDE.
+
+    Parses both Mathematica-string RHS expressions with sympy and
+    lambdifies them, mapping ``D`` to a numpy spectral-derivative
+    closure.  Provides a fallback when g++/fftw3 compilation is
+    unavailable.
+    """
+    from sympy.parsing.mathematica import parse_mathematica
+    from sympy import lambdify, Symbol
+
+    k = np.fft.rfftfreq(N, d=1.0 / N)
+
+    def _D(arg):
+        arg = np.asarray(arg, dtype=np.float64)
+        U_hat = np.fft.rfft(arg)
+        # Apply derivative filter: multiply by i*k (skip DC and Nyquist to
+        # match FFTW D() behaviour — see extra.h).
+        U_hat *= 1j * k
+        U_hat[0] = 0.0
+        if N % 2 == 0:
+            U_hat[N // 2] = 0.0
+        return np.fft.irfft(U_hat, n=N)
+
+    _ns = {
+        'D': _D, 'sin': np.sin, 'cos': np.cos, 'tan': np.tan,
+        'log': np.log, 'exp': np.exp, 'Abs': np.abs,
+        'atan': np.arctan, 'asin': np.arcsin, 'acos': np.arccos,
+    }
+
+    u_sym = Symbol('u')
+    v_sym = Symbol('v')
+
+    expr_r = parse_mathematica(rhs_real_str)
+    expr_c = parse_mathematica(rhs_complex_str)
+
+    f_r = lambdify((u_sym, v_sym), expr_r, modules=[_ns, 'numpy'])
+    f_c = lambdify((u_sym, v_sym), expr_c, modules=[_ns, 'numpy'])
+
+    def rhs(uv: np.ndarray) -> np.ndarray:
+        u = uv[:N]
+        v = uv[N:]
+        du = np.asarray(f_r(u, v), dtype=np.float64)
+        dv = np.asarray(f_c(u, v), dtype=np.float64)
+        return np.concatenate([du, dv])
+
+    return rhs
+
+
 # ═══════════════════════════════════════════════════════════════════════ #
 #  PDESimulator                                                            #
 # ═══════════════════════════════════════════════════════════════════════ #
@@ -154,12 +247,12 @@ class PDESimulator:
         self.k = np.fft.rfftfreq(N, d=1.0 / N)   # length N//2+1
 
         # Filled by factory methods
-        self._name:        str           = "unknown"
-        self._rhs_str:     Optional[str] = None    # Mathematica string (single)
-        self._numpy_rhs                  = None    # f(u_physical) -> du/dt
-        self._is_complex:  bool          = False   # two-component system?
-        self._rescale_ic:  bool          = False   # rescale IC to [0,1]?
-        self._engine: Optional[SpectralEngine] = None
+        self._name:        str                                  = "unknown"
+        self._rhs_str:     Optional[Union[str, Tuple[str, str]]] = None
+        self._numpy_rhs                                         = None    # f(u_physical) -> du/dt
+        self._is_complex:  bool                                 = False   # two-component system?
+        self._rescale_ic:  bool                                 = False   # rescale IC to [0,1]?
+        self._engine: Optional[SpectralEngine]                  = None
 
     # ------------------------------------------------------------------ #
     #  Factory methods                                                     #
@@ -238,23 +331,56 @@ class PDESimulator:
         return sim
 
     @classmethod
-    def custom(cls, rhs_str: str, name: str = "custom", **kwargs) -> "PDESimulator":
+    def custom(cls, rhs_str, name: str = "custom", **kwargs) -> "PDESimulator":
         """
-        Arbitrary single-component PDE via Mathematica-string RHS.
+        Arbitrary PDE via Mathematica-string RHS.
 
-        The RHS is compiled to a FFTW shared library; falls back to a
-        symbolic numpy RHS if compilation is unavailable.
+        Supports both single-component and two-component (coupled) systems.
 
         Parameters
         ----------
-        rhs_str : str
-            e.g. ``"-D[u]*u - D[D[D[u]]]"``
+        rhs_str : str or tuple of (str, str)
+            * Single string → single-component PDE (u only).
+              e.g. ``"-6*D[u]*u - D[D[D[u]]]"``
+            * Two-tuple → two-component coupled system (u, v).
+              The first element is the RHS for ∂u/∂t, the second for ∂v/∂t.
+              e.g. ``("-D[D[v]] - (u^2+v^2)*v", "D[D[u]] + (u^2+v^2)*u")``
+        name : str
+            Display name for the simulator.
+        **kwargs
+            Passed to PDESimulator constructor (N, T, n_t, etc.).
         """
         sim = cls(**kwargs)
-        sim._name    = name
-        sim._rhs_str = rhs_str
-        # No pre-built numpy_rhs; SpectralEngine will build one symbolically
-        # via sympy if g++/fftw3 is unavailable.
+        sim._name = name
+
+        if isinstance(rhs_str, tuple):
+            if len(rhs_str) != 2:
+                raise ValueError(
+                    "Tuple rhs_str must have exactly 2 elements: (u_t_rhs, v_t_rhs)"
+                )
+            sim._is_complex = True
+            sim._rhs_str = rhs_str
+            try:
+                sim._numpy_rhs = _build_custom_complex_rhs(
+                    sim.N, rhs_str[0], rhs_str[1]
+                )
+            except Exception:
+                logger.warning(
+                    "Could not build numpy fallback for %s; "
+                    "FFTW compilation will be required when backend='auto'",
+                    name,
+                )
+        else:
+            sim._rhs_str = rhs_str
+            try:
+                sim._numpy_rhs = _build_custom_rhs(sim.N, rhs_str)
+            except Exception:
+                logger.debug(
+                    "Could not build numpy fallback for %s; "
+                    "FFTW compilation will be required when backend='auto'",
+                    name,
+                )
+
         return sim
 
     # ------------------------------------------------------------------ #

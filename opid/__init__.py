@@ -7,6 +7,7 @@ sparse regression on a feature library constructed from trajectory data.
 Package layout
 --------------
 opid.simulator   — PDESimulator: FFTW-accelerated spectral solver (fallback to numpy)
+                  Supports single-component PDEs and coupled two-variable (u,v) systems.
 opid.library     — FeatureLibrary: builds candidate term matrices
 opid.recovery    — OperatorIdentifier + RecoveryResult
 opid.utils       — helpers: add_noise, relative_error, print_table
@@ -21,6 +22,14 @@ Typical usage
 >>> oid  = OperatorIdentifier(method="l0_pareto", n_eps=40)
 >>> res  = oid.fit(Theta, U_t.ravel(), feature_names=names)
 >>> print(res)
+
+Two-component (coupled) systems
+-------------------------------
+>>> sim = PDESimulator.custom(
+...     ("-D[D[v]] - (u^2+v^2)*v", "D[D[u]] + (u^2+v^2)*u"),
+...     name="NLS", backend="numpy",
+... )
+>>> U, U_t = sim.run()   # U is the real part (u-component)
 """
 
 from .simulator import PDESimulator

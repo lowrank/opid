@@ -17,6 +17,11 @@ MODELS = {
         EvolutionEquation(["D[D[u]] + u^2 - u^3"]),
     "Fisher–KPP":
         EvolutionEquation(["D[D[u]] + u - u^2"]),
+    "Nonlin. Schrödinger (Re)":
+        EvolutionEquation([
+            "-D[D[v]] - (u^2+v^2)*v",
+            "D[D[u]] + (u^2+v^2)*u",
+        ]),
     "Swift–Hohenberg":
         EvolutionEquation(["u - u^3 - (2*D[D[u]] + D[D[D[D[u]]]])"]),
     "Eikonal":
@@ -28,9 +33,17 @@ MODELS = {
 dt, T = 0.001, 1.0
 t_span = np.arange(dt, T + dt, dt)
 x_axis = np.linspace(0, 2*np.pi, 1001)[:-1]
-y0 = (0.6 + 0.3*np.sin(x_axis) + 0.15*np.sin(2*x_axis)
-      + 0.1*np.cos(3*x_axis) + 0.02*np.cos(4*x_axis))
 Nx = len(x_axis)
+
+# Single-component initial condition (used for real models)
+y0_real = (
+    0.6 + 0.3*np.sin(x_axis) + 0.15*np.sin(2*x_axis)
+    + 0.1*np.cos(3*x_axis) + 0.02*np.cos(4*x_axis)
+)
+# Two-component initial condition for NLS (ψ₀ = sech(x-π); v₀ = 0)
+y0_nls_u = 2.0 / np.cosh(x_axis - np.pi)
+y0_nls_v = np.zeros(Nx)
+y0_nls = np.concatenate([y0_nls_u, y0_nls_v])
 
 n = len(MODELS)
 cols = 3
@@ -43,6 +56,8 @@ for idx, (name, model) in enumerate(MODELS.items()):
     t0 = time.time()
     model.wrap(name.replace(" ", "_"))
     dt_compile = time.time() - t0
+
+    y0 = y0_nls if model.complex else y0_real
 
     t0 = time.time()
     sol = model.solve(y0, t_span, rtol=1e-6, atol=1e-6)

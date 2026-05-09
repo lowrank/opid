@@ -109,9 +109,61 @@ class TestSimulator(unittest.TestCase):
     def test_nls(self):
         """NLS should produce valid real/imag data."""
         sim = PDESimulator.nls(sigma=1.0, N=self.N, T=self.T, n_t=self.n_t,
-                               n_modes=4, seed=self.seed, backend="numpy")
+                                n_modes=4, seed=self.seed, backend="numpy")
         self._check(sim)
         self.assertEqual(sim.name, "NLS")
+
+    def test_custom_complex_wave_equation(self):
+        """Custom two-component PDE (wave eq: u_t = v, v_t = u_xx)."""
+        sim = PDESimulator.custom(
+            ("v", "D[D[u]]"),
+            name="wave-eq", N=self.N, T=self.T, n_t=self.n_t,
+            n_modes=4, seed=self.seed, backend="numpy",
+        )
+        U, U_t = sim.run()
+        self.assertEqual(U.shape, (self.N, self.n_t))
+        self.assertEqual(U_t.shape, (self.N, self.n_t))
+        self.assertFalse(np.isnan(U).any())
+        self.assertFalse(np.isinf(U).any())
+        self.assertFalse(np.isnan(U_t).any())
+        self.assertFalse(np.isinf(U_t).any())
+        self.assertEqual(sim.name, "wave-eq")
+        self.assertTrue(sim._is_complex)
+
+    def test_custom_complex_nls(self):
+        """NLS via custom() should produce valid data."""
+        sim = PDESimulator.custom(
+            ("-D[D[v]] - 1.0*(u^2+v^2)*v", "D[D[u]] + 1.0*(u^2+v^2)*u"),
+            name="NLS-custom", N=self.N, T=self.T, n_t=self.n_t,
+            n_modes=4, seed=42, backend="numpy",
+        )
+        U, U_t = sim.run()
+        self.assertEqual(U.shape, (self.N, self.n_t))
+        self.assertEqual(U_t.shape, (self.N, self.n_t))
+        self.assertFalse(np.isnan(U).any())
+        self.assertFalse(np.isinf(U).any())
+        self.assertFalse(np.isnan(U_t).any())
+        self.assertFalse(np.isinf(U_t).any())
+        self.assertEqual(sim.name, "NLS-custom")
+        self.assertTrue(sim._is_complex)
+
+    def test_custom_single_component_backward_compat(self):
+        """custom() with a single string should still work (backward compat)."""
+        sim = PDESimulator.custom(
+            "-6*D[u]*u - D[D[D[u]]]",
+            name="KdV-custom", N=self.N, T=self.T, n_t=self.n_t,
+            n_modes=4, seed=42, backend="numpy",
+        )
+        U, U_t = sim.run()
+        self.assertEqual(U.shape, (self.N, self.n_t))
+        self.assertFalse(np.isnan(U).any())
+        self.assertFalse(np.isinf(U).any())
+        self.assertFalse(sim._is_complex)
+
+    def test_custom_complex_fails_on_bad_tuple(self):
+        """custom() with wrong-length tuple should raise ValueError."""
+        with self.assertRaises(ValueError):
+            PDESimulator.custom(("one", "two", "three"), N=16)
 
 
 if __name__ == '__main__':
