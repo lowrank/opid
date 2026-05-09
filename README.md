@@ -115,9 +115,11 @@ opid/
 python examples/gallery.py     # generates docs/example.png
 ```
 
+![Classical PDE solutions](docs/example.png)
+
 Solves 8 classical evolution equations (KdV-Burgers, KS, Ginzburg-Landau,
 FitzHugh-Nagumo, Fisher-KPP, Swift-Hohenberg, Eikonal, Porous Media) on
-[0, 2π] and plots solution snapshots in a 3×3 grid.
+[0, 2π] and plots solution snapshots.
 
 ## Testing
 
