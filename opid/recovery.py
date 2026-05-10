@@ -988,7 +988,7 @@ class OperatorIdentifier:
 
             groups = [g.tolist() for g in _recurse(idx)]
             ng = len(groups)
-            min_votes = max(1, ng - 1)
+            min_votes = max(1, ng // 2)
 
             if self.verbose:
                 print(f"  [curs] r{rnd} n={current_n} {ng} groups "
