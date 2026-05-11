@@ -24,7 +24,7 @@ U, U_t = sim.run()
 
 # 2. Build a feature library
 lib = FeatureLibrary(poly_degree=3, max_deriv=4, max_cross_degree=4)
-Theta, names = lib.build(U, sim.k)
+Theta, names = lib.build(U)
 
 # 3. Recover the operator
 result = OperatorIdentifier(method="omp", n_nonzero=2).fit(Theta, U_t.ravel(), names)
@@ -69,6 +69,7 @@ are unavailable).
 | OMP | `'omp'` | Orthogonal Matching Pursuit — fast, column-normalised |
 | LassoCV | `'lasso'` | Column-normalised LassoCV with threshold truncation and OLS debiasing |
 | L0 MILP | `'l0_pareto'` | Bisection-based MILP Pareto sweep with SCIP/CBC solvers |
+| L0 SDP2 | `'l0_sdp2'` | Order-2 Lasserre SDP relaxation (P ≤ 9) |
 | CCP | `'ccp'` | Correlation-cut pursuit — spectral-cluster OLS voting + OMP |
 
 ## Examples
@@ -86,11 +87,6 @@ python examples/benchmark_all.py      # All seven PDEs
 ### B-spline Smoothing
 ```bash
 python examples/bspline_smoothing.py   # Smooths noisy U before differentiation
-```
-
-### All PDEs
-```bash
-python examples/benchmark_all.py             # All 7 PDEs with OMP + Lasso + CCP + MILP
 ```
 
 ## Feature Library
@@ -118,7 +114,7 @@ basis before differentiation, improving derivative quality for noisy data.
 opid/
 ├── simulator.py    # PDESimulator — spectral PDE integrator
 ├── library.py      # FeatureLibrary — candidate term dictionary
-├── recovery.py     # OperatorIdentifier — OMP / LassoCV / MILP / SDP / CCP
+├── recovery.py     # OperatorIdentifier — OMP / LassoCV / MILP / SDP2 / CCP
 ├── _backend/       # SpectralEngine — FFTW-accelerated solver
 ├── _bspline/       # B-spline design matrix (Cython extension)
 ├── utils.py        # add_noise, jaccard_score, print_recovery_table
