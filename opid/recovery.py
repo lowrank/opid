@@ -971,6 +971,7 @@ class OperatorIdentifier:
             # correlation on active set
             C = np.abs((Tn[:, active].T @ Tn[:, active]) / n)
             np.fill_diagonal(C, 0)
+            C = np.nan_to_num(C, nan=0.0, posinf=0.0, neginf=0.0)
 
             # spectral cut → groups
             L = _splap(C, normed=False)
