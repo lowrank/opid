@@ -299,10 +299,10 @@ class OperatorIdentifier:
         y_scale_full = float(np.linalg.norm(y, 1))
         noise_floor = y_scale_full * 0.1
 
+        P = Ts_norm.shape[1]
         # Big-M: use 2× the OLS bound with a floor of 1 to avoid trivial relaxation
         M_tight = max(2.0 * float(np.max(np.abs(xi_ls))), 1.0)
 
-        P = Ts_norm.shape[1]
         xi_var  = cp.Variable(P)
         z_var   = cp.Variable(P, boolean=True)
         eps_param = cp.Parameter(nonneg=True)
@@ -988,11 +988,6 @@ class OperatorIdentifier:
 
             groups = [g.tolist() for g in _recurse(idx)]
             ng = len(groups)
-            min_votes = max(1, ng // 2)
-
-            if self.verbose:
-                print(f"  [curs] r{rnd} n={current_n} {ng} groups "
-                      f"sizes={[len(g) for g in groups]} min_votes={min_votes}")
 
             # cross-group OLS + voting
             votes = {gidx: 0 for gidx in range(current_n)}
@@ -1007,8 +1002,16 @@ class OperatorIdentifier:
                         if abs(float(xi[k])) > 1e-14:
                             votes[col] += 1
 
+            # Determine threshold: start lenient, tighten if nothing pruned
+            min_votes = max(1, ng // 2)
             survivors = [gidx for gidx, v in votes.items() if v >= min_votes]
+            if len(survivors) == current_n and ng > 1:
+                min_votes = max(1, ng - 1)
+                survivors = [gidx for gidx, v in votes.items() if v >= min_votes]
+
             if self.verbose:
+                print(f"  [curs] r{rnd} n={current_n} {ng} groups "
+                      f"sizes={[len(g) for g in groups]} min_votes={min_votes}")
                 vc = sorted([(v, names[active[gi]]) for gi, v in votes.items() if v >= min_votes],
                             reverse=True)
                 print(f"    votes satisfied: {vc}")
