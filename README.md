@@ -73,13 +73,14 @@ are unavailable).
 
 ## Examples
 
-### PDE Identification
+### Benchmarking
 ```bash
-python examples/kdv_identification.py        # KdV: J=1.00 all methods
-python examples/burgers_identification.py    # Burgers: J=1.00 all methods
-python examples/allen_cahn_identification.py # Allen-Cahn: J=1.00 OMP + MILP
-python examples/ks_identification.py         # KS: J=1.00 MILP only
-python examples/fkpp_identification.py       # FKPP: J=1.00 MILP only
+python examples/bench_kdv.py          # KdV: J=1.00 all methods
+python examples/bench_burgers.py      # Burgers: J=1.00 all methods
+python examples/bench_allen_cahn.py   # Allen-Cahn: J=1.00 OMP + MILP + CCP
+python examples/bench_ks.py           # KS: J=1.00 MILP + CCP
+python examples/bench_fkpp.py         # FKPP: J=1.00 MILP + CCP
+python examples/benchmark_all.py      # All seven PDEs
 ```
 
 ### B-spline Smoothing
@@ -89,7 +90,7 @@ python examples/bspline_smoothing.py   # Smooths noisy U before differentiation
 
 ### All PDEs
 ```bash
-python examples/run_all.py             # All 5 PDEs with OMP + Lasso
+python examples/benchmark_all.py             # All 7 PDEs with OMP + Lasso + CCP + MILP
 ```
 
 ## Feature Library
