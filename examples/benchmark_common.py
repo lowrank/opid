@@ -58,9 +58,14 @@ def run_benchmark(name, sim, true_set):
 
         line = "\t".join(row)
         lines.append(line)
-        print(f"  [{name}] P={P:2d} {plab}  " +
-              f"OMP {row[3]}  Lasso {row[5]}  CCP {row[7]}  " +
-              f"SCIP {row[9]}  CBC {row[11]}  SDP1 {row[13]}", flush=True)
+        print(f"  [{name}] P={P:2d} {plab}\n"
+              f"    OMP   J={row[3]:>5s}  t={row[4]:>6s}s\n"
+              f"    Lasso J={row[5]:>5s}  t={row[6]:>6s}s\n"
+              f"    CCP   J={row[7]:>5s}  t={row[8]:>6s}s\n"
+              f"    SCIP  J={row[9]:>5s}  t={row[10]:>6s}s\n"
+              f"    CBC   J={row[11]:>5s}  t={row[12]:>6s}s\n"
+              f"    SDP1  J={row[13]:>5s}  t={row[14]:>6s}s",
+              flush=True)
 
     with open(out_path, "w") as f:
         f.write("\n".join(lines) + "\n")

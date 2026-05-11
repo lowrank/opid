@@ -15,7 +15,8 @@ scripts = [
 
 for s in scripts:
     print(f"\n{'='*60}\n  Running {s}\n{'='*60}", flush=True)
-    r = subprocess.run([sys.executable, os.path.join(HERE, s)])
+    r = subprocess.run([sys.executable, os.path.join(HERE, s)],
+                       stdout=None, stderr=None)  # inherit parent stdout/stderr
     if r.returncode != 0:
         print(f"[FAIL] {s} exited with {r.returncode}", flush=True)
 
