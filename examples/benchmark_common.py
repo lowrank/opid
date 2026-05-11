@@ -34,7 +34,7 @@ def run_benchmark(name, sim, true_set):
         for method, kw in [
             ("omp",   {"n_nonzero": len(true_set)}),
             ("lasso", {}),
-            ("l0_sdp2p", {"cluster_size": 8}),
+            ("ccp", {"cluster_size": 8}),
             ("l0_pareto", {"n_eps": 10, "max_samples": 2000, "milp_solver": "SCIP",
                            "eps_factor_hi": 100, "eps_factor_lo": 0.01}),
             ("l0_pareto", {"n_eps": 10, "max_samples": 2000, "milp_solver": "CBC",

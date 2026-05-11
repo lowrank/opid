@@ -133,7 +133,7 @@ class OperatorIdentifier:
         cluster_size: int = 8,
         verbose: bool = False,
     ):
-        if method not in ("omp", "lasso", "l0_pareto", "l0_sdp", "l0_sdp2", "l0_sdp2p"):
+        if method not in ("omp", "lasso", "l0_pareto", "l0_sdp", "l0_sdp2", "ccp"):
             raise ValueError(f"Unknown method '{method}'.")
         self.method = method
         self.n_nonzero = n_nonzero
@@ -185,8 +185,8 @@ class OperatorIdentifier:
             return self._fit_l0_sdp(Theta, y, names)
         elif self.method == "l0_sdp2":
             return self._fit_l0_sdp2(Theta, y, names)
-        elif self.method == "l0_sdp2p":
-            return self._fit_l0_sdp2_pursuit(Theta, y, names)
+        elif self.method == "ccp":
+            return self._fit_ccp(Theta, y, names)
         else:
             return self._fit_l0_pareto(Theta, y, names)
 
@@ -937,7 +937,7 @@ class OperatorIdentifier:
                             for j in range(P)])
         return supp, xi_vals
 
-    def _fit_l0_sdp2_pursuit(self, Theta, y, names) -> RecoveryResult:
+    def _fit_ccp(self, Theta, y, names) -> RecoveryResult:
         """Hierarchical correlation-cut pursuit with iterative voting.
 
           1. Recursive spectral cut on the correlation graph → groups.
@@ -1062,7 +1062,7 @@ class OperatorIdentifier:
                     rec_cols = keep
 
         return RecoveryResult(
-            method="l0_sdp2p",
+            method="ccp",
             coef=coef,
             support=rec_cols,
             names=[names[i] for i in rec_cols],
