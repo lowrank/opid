@@ -69,6 +69,8 @@ are unavailable).
 | OMP | `'omp'` | Orthogonal Matching Pursuit — fast, column-normalised |
 | LassoCV | `'lasso'` | Column-normalised LassoCV with threshold truncation and OLS debiasing |
 | L0 MILP | `'l0_pareto'` | Bisection-based MILP Pareto sweep with SCIP/CBC solvers |
+| L0 SDP | `'l0_sdp'` | Order-1 Lasserre SDP relaxation with L2 constraint (SCS) |
+| CCP | `'ccp'` | Correlation-cut pursuit — spectral-cluster OLS voting + OMP |
 
 ## Examples
 
@@ -116,7 +118,7 @@ basis before differentiation, improving derivative quality for noisy data.
 opid/
 ├── simulator.py    # PDESimulator — spectral PDE integrator
 ├── library.py      # FeatureLibrary — candidate term dictionary
-├── recovery.py     # OperatorIdentifier — OMP / LassoCV / MILP
+├── recovery.py     # OperatorIdentifier — OMP / LassoCV / MILP / SDP / CCP
 ├── _backend/       # SpectralEngine — FFTW-accelerated solver
 ├── _bspline/       # B-spline design matrix (Cython extension)
 ├── utils.py        # add_noise, jaccard_score, print_recovery_table
