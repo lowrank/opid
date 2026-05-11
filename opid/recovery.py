@@ -1,7 +1,7 @@
 """
 OperatorIdentifier — sparse recovery of PDE coefficients.
 
-Three complementary algorithms are exposed through a single sklearn-style API:
+Five complementary algorithms through a single sklearn-style API:
 
 Method 1 — ``'omp'``
     Orthogonal Matching Pursuit.  Greedy, fast, robust to moderate noise.
@@ -16,6 +16,17 @@ Method 3 — ``'l0_pareto'``
     tolerance epsilon.  A *stable plateau* in the (sparsity, epsilon) curve
     is taken as the identified support; a final OLS step debiases the
     coefficients.  Most accurate but most expensive.
+
+Method 4 — ``'l0_sdp2'``
+    Order-2 Lasserre SDP relaxation.  Moment matrix over all degree-2
+    monomials in (ξ, z) with localising matrices enforcing binary and
+    complementarity constraints.  Tractable for P ≤ ~9.
+
+Method 5 — ``'ccp'``
+    Correlation-Cut Pursuit.  Recursive spectral clustering on the feature
+    correlation graph, cross-group OLS voting with adaptive threshold,
+    and final OMP + OLS debiasing.  Scales to P ≥ 40, J=1.0 on all
+    tested PDEs.
 
 All methods return a :class:`RecoveryResult` with a uniform interface.
 """
@@ -86,34 +97,36 @@ class OperatorIdentifier:
 
     Parameters
     ----------
-    method : {'omp', 'lasso', 'l0_pareto', 'l0_sdp'}
+    method : {'omp', 'lasso', 'l0_pareto', 'l0_sdp2', 'ccp'}
         Recovery algorithm.
     n_nonzero : int or None
         Target sparsity for OMP.  Ignored by other methods.
     alpha : float
         Regularisation strength for Lasso.
-        n_eps : int
-            Number of epsilon grid points for the L0 Pareto sweep.
-        eps_factor_hi : float
-            Upper bound for epsilon sweep as a multiple of the noise floor.
-        eps_factor_lo : float
-            Lower bound for epsilon sweep as a multiple of the noise floor.
-        max_samples : int
-            Maximum number of randomly selected rows used in the MILP subproblem
-            (reduces wall time for the L0 method; full data is used for OLS).
-        milp_solver : str
-            CVXPY solver name for the MILP (default ``'GLPK_MI'``).
-        threshold_coef : float or None
-            Coefficient truncation threshold after OLS debiasing.
-            Entries with |ξ_i| < threshold_coef·max(|ξ|) are pruned.
-            Default: 1e-10 for clean data, 1e-4 for noisy data.
-        max_rounds : int
-            Maximum refinements.  Each round uses the previous round's
-            OLS L1 residual to narrow (or widen) the epsilon range.
-        feature_names : list of str or None
-            Optional human-readable feature names.
-        random_state : int or None
-            Seed for sub-sampling in L0 Pareto.
+    n_eps : int
+        Number of epsilon bisection iterations for the L0 Pareto / SDP sweep.
+    eps_factor_hi : float
+        Upper bound for epsilon sweep as a multiple of the noise floor.
+    eps_factor_lo : float
+        Lower bound for epsilon sweep as a multiple of the noise floor.
+    max_samples : int
+        Maximum number of randomly selected rows for MILP / SDP subproblems
+        (reduces wall time; full data is used for OLS).
+    milp_solver : str
+        CVXPY MILP solver (SCIP, CBC, or GLPK_MI).
+    cluster_size : int
+        Maximum features per cluster for CCP (default 8).
+    threshold_coef : float or None
+        Coefficient truncation threshold after OLS debiasing.
+        Entries with |ξ_i| < threshold_coef·max(|ξ|) are pruned.
+    max_rounds : int
+        Maximum refinements (L0 Pareto only).
+    feature_names : list of str or None
+        Optional human-readable feature names.
+    random_state : int or None
+        Seed for sub-sampling in L0 Pareto / SDP.
+    verbose : bool
+        Print progress messages (default False).
         """
 
     def __init__(
@@ -792,14 +805,15 @@ class OperatorIdentifier:
         return supp, xi_vals
 
     def _fit_ccp(self, Theta, y, names) -> RecoveryResult:
-        """Hierarchical correlation-cut pursuit with iterative voting.
+        """Correlation-Cut Pursuit with adaptive cross-group voting.
 
-          1. Recursive spectral cut on the correlation graph → groups.
-          2. Cross-group OLS + voting: feature survives if it gets ≥ N-1
-             votes (appears in all cross-group OLS runs involving its group).
-          3. Re-cluster the survivors, repeat until the support stabilises
-             or falls below *cluster_size*.
-          4. Final OLS + threshold debiasing.
+          1. Recursive spectral cut (Fiedler vector) on the correlation
+             graph → groups of ≤ *cluster_size* features.
+          2. Cross-group OLS + voting: default threshold is ≥ N/2 votes;
+             if no pruning occurs, tighten to ≥ N-1 votes.
+          3. Re-cluster the survivors, repeat until convergence or the
+             support falls below *cluster_size*.
+          4. Final OMP refinement (if ≥6 survivors) + OLS debiasing.
         """
         P = Theta.shape[1]
         n = len(y)
