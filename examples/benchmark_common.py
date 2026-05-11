@@ -35,12 +35,6 @@ def run_benchmark(name, sim, true_set):
             ("omp",   {"n_nonzero": len(true_set)}),
             ("lasso", {}),
             ("ccp", {"cluster_size": 8}),
-            ("l0_pareto", {"n_eps": 10, "max_samples": 2000, "milp_solver": "SCIP",
-                           "eps_factor_hi": 100, "eps_factor_lo": 0.01}),
-            ("l0_pareto", {"n_eps": 10, "max_samples": 2000, "milp_solver": "CBC",
-                           "eps_factor_hi": 100, "eps_factor_lo": 0.01}),
-            ("l0_sdp", {"n_eps": 10, "eps_factor_hi": 100, "eps_factor_lo": 0.01,
-                         "max_samples": 2000}),
         ]:
             solver_tag = kw.pop("solver_tag", None) or method
             t0 = time.time()
@@ -63,8 +57,7 @@ def run_benchmark(name, sim, true_set):
               f"    Lasso J={row[5]:>5s}  t={row[6]:>6s}s\n"
               f"    CCP   J={row[7]:>5s}  t={row[8]:>6s}s\n"
               f"    SCIP  J={row[9]:>5s}  t={row[10]:>6s}s\n"
-              f"    CBC   J={row[11]:>5s}  t={row[12]:>6s}s\n"
-              f"    SDP1  J={row[13]:>5s}  t={row[14]:>6s}s",
+              f"    CBC   J={row[11]:>5s}  t={row[12]:>6s}s",
               flush=True)
 
     with open(out_path, "w") as f:

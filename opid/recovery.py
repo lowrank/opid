@@ -133,7 +133,7 @@ class OperatorIdentifier:
         cluster_size: int = 8,
         verbose: bool = False,
     ):
-        if method not in ("omp", "lasso", "l0_pareto", "l0_sdp", "l0_sdp2", "ccp"):
+        if method not in ("omp", "lasso", "l0_pareto", "l0_sdp2", "ccp"):
             raise ValueError(f"Unknown method '{method}'.")
         self.method = method
         self.n_nonzero = n_nonzero
@@ -181,8 +181,6 @@ class OperatorIdentifier:
             return self._fit_omp(Theta, y, names)
         elif self.method == "lasso":
             return self._fit_lasso(Theta, y, names)
-        elif self.method == "l0_sdp":
-            return self._fit_l0_sdp(Theta, y, names)
         elif self.method == "l0_sdp2":
             return self._fit_l0_sdp2(Theta, y, names)
         elif self.method == "ccp":
@@ -454,156 +452,12 @@ class OperatorIdentifier:
             },
         )
 
-    def _fit_l0_sdp(self, Theta, y, names) -> RecoveryResult:
-        """L0 via Lasserre order-1 SDP relaxation with L2 constraint.
-
-        Lifts the L0 problem into a (2P+1)×(2P+1) moment matrix X ≽ 0.
-        Binary (z_i² = z_i) and complementarity (ξ_i z_i = 0) constraints
-        are linear in X.  A Pareto sweep over ε selects the support via
-        plateau detection, followed by OLS debiasing on the full data.
-        """
-        try:
-            import cvxpy as cp
-        except ImportError as e:
-            raise ImportError("cvxpy is required for the 'l0_sdp' method.") from e
-
-        rng = np.random.default_rng(self.random_state)
-        n = len(y)
-        m = min(self.max_samples, n)
-        idx = rng.choice(n, m, replace=False)
-        Ts = Theta[idx]
-        ys = y[idx]
-
-        P = Ts.shape[1]
-        N = 1 + 2 * P
-        a = Ts.T @ ys
-        Q = Ts.T @ Ts
-        c2 = float(ys @ ys)
-
-        try:
-            xi_ols, _, _, _ = np.linalg.lstsq(Ts, ys, rcond=None)
-            ols_res = float(np.linalg.norm(ys - Ts @ xi_ols))
-        except np.linalg.LinAlgError:
-            xi_ols = np.zeros(P)
-            ols_res = float(np.linalg.norm(ys))
-        y_scale = float(np.linalg.norm(y, 1))
-        noise_floor = max(y_scale * 0.1, ols_res * 0.5)
-
-        X = cp.Variable((N, N), PSD=True)
-        eps_param = cp.Parameter(nonneg=True)
-
-        constraints = [X[0, 0] == 1.0]
-        for i in range(P):
-            j = 1 + P + i
-            constraints.append(X[j, 0] >= 0)
-            constraints.append(X[j, 0] <= 1)
-            constraints.append(X[j, 0] == X[j, j])
-        for i in range(P):
-            constraints.append(X[1 + i, 1 + P + i] == 0)
-
-        lin = 2.0 * cp.sum(cp.multiply(a, X[1:1+P, 0]))
-        quad = cp.trace(Q @ X[1:1+P, 1:1+P])
-        constraints.append(c2 - lin + quad <= eps_param)
-
-        obj = cp.Minimize(cp.sum(X[1+P:1+2*P, 0]))
-        prob = cp.Problem(obj, constraints)
-
-        eps_hi = noise_floor * self.eps_factor_hi
-        eps_lo = noise_floor * self.eps_factor_lo
-
-        def _solve(eps_val):
-            eps_param.value = eps_val
-            try:
-                prob.solve(solver=cp.SCS, warm_start=False)
-            except Exception:
-                return None, None
-            if prob.status in ("optimal", "optimal_inaccurate"):
-                zv = X[1+P:1+2*P, 0].value
-                if zv is None:
-                    return None, None
-                supp = frozenset(i for i in range(P) if float(zv[i]) < 0.5)
-                xv = X[1:1+P, 0].value
-                xi = np.array(xv).flatten() if xv is not None else np.zeros(P)
-                return supp, xi
-            return None, None
-
-        sl, _ = _solve(eps_lo)
-        while sl is None and eps_lo < eps_hi * 0.9:
-            eps_lo *= 2.0
-            sl, _ = _solve(eps_lo)
-            if self.verbose:
-                print(f"  [sdp] eps_lo → {eps_lo:.3e} {'✓' if sl else '✗'}")
-
-        sh, _ = _solve(eps_hi)
-        k_hi = len(sh) if sh is not None else 0
-        k_lo = len(sl) if sl is not None else P
-        if self.verbose:
-            print(f"  [sdp] eps [{eps_lo:.1e}, {eps_hi:.1e}]  k_lo={k_lo}  k_hi={k_hi}")
-
-        frontier = {k_lo: eps_lo, k_hi: eps_hi}
-        for k in range(k_hi + 1, k_lo):
-            left  = frontier.get(k + 1, eps_lo)
-            right = frontier.get(k - 1, eps_hi)
-            if left >= right:
-                frontier[k] = right; continue
-            for _ in range(max(self.n_eps // max(k_lo - k_hi, 1), 3)):
-                mid = np.sqrt(left * right)
-                sm, _ = _solve(mid)
-                if sm is None: break
-                if len(sm) <= k: right = mid
-                else:             left  = mid
-                if right / left < 1.02: break
-            frontier[k] = right
-
-        pairs = []
-        for eps in sorted(set(frontier.values())):
-            sm, _ = _solve(eps)
-            if sm is not None:
-                pairs.append((eps, sm))
-        pairs.sort(key=lambda p: p[0])
-        if not pairs:
-            return RecoveryResult(method="l0_sdp", coef=np.zeros(P),
-                support=[], names=[], active_coef=[],
-                residual=float(np.linalg.norm(y)),
-                meta={"warning": "no_feasible_sdp"})
-
-        valid_eps = [p[0] for p in pairs]
-        supports_raw = [p[1] for p in pairs]
-        if self.verbose:
-            print(f"  [sdp] {len(pairs)} sparsity levels")
-
-        runs = self._find_plateau_runs(supports_raw, valid_eps)
-        non_trivial = [(s, e, supp) for s, e, supp in runs if len(supp) > 0] or runs
-        rec_s, rec_e, rec_supp = min(non_trivial, key=lambda r: valid_eps[r[0]])
-
-        if self.verbose:
-            print(f"  [sdp] selected: k={len(rec_supp)}  "
-                  f"eps=[{valid_eps[rec_s]:.3e}, {valid_eps[rec_e]:.3e}]")
-
-        rec_cols = sorted(rec_supp)
-        if rec_cols:
-            ols_coef, _, _, _ = np.linalg.lstsq(Theta[:, rec_cols], y, rcond=None)
-        else:
-            ols_coef = np.array([])
-        coef = np.zeros(P)
-        for j, col in enumerate(rec_cols):
-            coef[col] = float(ols_coef[j])
-
-        return RecoveryResult(method="l0_sdp", coef=coef,
-            support=rec_cols, names=[names[i] for i in rec_cols],
-            active_coef=[float(coef[i]) for i in rec_cols],
-            residual=float(np.linalg.norm(y - Theta @ coef)),
-            meta={"plateau_eps_range": (valid_eps[rec_s], valid_eps[rec_e])},
-        )
-
     def _fit_l0_sdp2(self, Theta, y, names) -> RecoveryResult:
         """L0 via Lasserre order-2 SDP relaxation with L2 constraint.
 
-        Extends the order-1 moment matrix (degree-1 monomial basis) to a
-        degree-2 monomial basis with ~C(2P+2,2) entries, providing a
-        tighter relaxation of the binary and complementarity constraints.
-        Localising matrices of order-1 enforce z_i²=z_i, ξ_i z_i=0, and
-        the L2 bound.  Pareto sweep + OLS as in ``l0_sdp``.
+        Moment matrix indexed by degree-2 monomials with order-1
+        localising matrices enforcing z_i²=z_i, ξ_i z_i=0, and
+        the L2 bound.  Pareto sweep + OLS as in ``l0_pareto``.
         """
         try:
             import cvxpy as cp

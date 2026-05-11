@@ -69,7 +69,6 @@ are unavailable).
 | OMP | `'omp'` | Orthogonal Matching Pursuit — fast, column-normalised |
 | LassoCV | `'lasso'` | Column-normalised LassoCV with threshold truncation and OLS debiasing |
 | L0 MILP | `'l0_pareto'` | Bisection-based MILP Pareto sweep with SCIP/CBC solvers |
-| L0 SDP | `'l0_sdp'` | Order-1 Lasserre SDP relaxation with L2 constraint (SCS) |
 | CCP | `'ccp'` | Correlation-cut pursuit — spectral-cluster OLS voting + OMP |
 
 ## Examples
