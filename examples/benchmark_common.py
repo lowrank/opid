@@ -35,12 +35,12 @@ def run_benchmark(name, sim, true_set):
             ("omp",   {"n_nonzero": len(true_set)}),
             ("lasso", {}),
             ("l0_sdp2p", {"cluster_size": 8}),
-            ("l0_pareto", {"n_eps": 10, "max_samples": 5000, "milp_solver": "SCIP",
+            ("l0_pareto", {"n_eps": 10, "max_samples": 2000, "milp_solver": "SCIP",
                            "eps_factor_hi": 100, "eps_factor_lo": 0.01}),
-            ("l0_pareto", {"n_eps": 10, "max_samples": 5000, "milp_solver": "CBC",
+            ("l0_pareto", {"n_eps": 10, "max_samples": 2000, "milp_solver": "CBC",
                            "eps_factor_hi": 100, "eps_factor_lo": 0.01}),
             ("l0_sdp", {"n_eps": 10, "eps_factor_hi": 100, "eps_factor_lo": 0.01,
-                         "max_samples": 5000}),
+                         "max_samples": 2000}),
         ]:
             solver_tag = kw.pop("solver_tag", None) or method
             t0 = time.time()
