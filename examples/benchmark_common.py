@@ -36,7 +36,6 @@ def run_benchmark(name, sim, true_set):
             ("lasso", {}),
             ("ccp", {"cluster_size": 8}),
         ]:
-            solver_tag = kw.pop("solver_tag", None) or method
             t0 = time.time()
             try:
                 oid = OperatorIdentifier(method=method, **kw)
@@ -52,13 +51,12 @@ def run_benchmark(name, sim, true_set):
 
         line = "\t".join(row)
         lines.append(line)
-        print(f"  [{name}] P={P:2d} {plab}\n"
-              f"    OMP   J={row[3]:>5s}  t={row[4]:>6s}s\n"
-              f"    Lasso J={row[5]:>5s}  t={row[6]:>6s}s\n"
-              f"    CCP   J={row[7]:>5s}  t={row[8]:>6s}s\n"
-              f"    SCIP  J={row[9]:>5s}  t={row[10]:>6s}s\n"
-              f"    CBC   J={row[11]:>5s}  t={row[12]:>6s}s",
-              flush=True)
+        n_methods = (len(row) - 3) // 2
+        labels = ["OMP", "Lasso", "CCP", "SCIP", "CBC"][:n_methods]
+        parts = []
+        for m in range(n_methods):
+            parts.append(f"    {labels[m]:>5s} J={row[3+2*m]:>5s}  t={row[4+2*m]:>6s}s")
+        print(f"  [{name}] P={P:2d} {plab}\n" + "\n".join(parts), flush=True)
 
     with open(out_path, "w") as f:
         f.write("\n".join(lines) + "\n")
