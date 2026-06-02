@@ -60,3 +60,35 @@ class QRSubsampler(Subsampler):
         from scipy.linalg import qr
         _, _, piv = qr(Theta.T, pivoting=True, mode='economic')
         return np.asarray(piv[:m], dtype=int)
+
+
+class SignalQRSubsampler(Subsampler):
+    """Signal-aware pivoted-QR row selection.
+
+    First filters to the top 2m rows by L2 norm (removing the
+    dissipative tail), then applies pivoted QR among survivors to
+    select m maximally independent rows.  Balances signal strength
+    with rank maximization.
+
+    Parameters
+    ----------
+    ratio : float
+        Keep top ``ratio * m`` rows by norm before QR (default 2.0).
+    """
+
+    def __init__(self, ratio: float = 2.0):
+        self.ratio = ratio
+
+    def _select(self, Theta: np.ndarray, m: int) -> np.ndarray:
+        from scipy.linalg import qr
+        n = Theta.shape[0]
+        pool_size = min(int(self.ratio * m), n)
+        norms = np.linalg.norm(Theta, axis=1)
+        # argpartition needs kth < len; when pool_size == n, use argsort
+        if pool_size < n:
+            top = np.argpartition(-norms, pool_size - 1)[:pool_size]
+        else:
+            top = np.arange(n)
+        Th_top = Theta[top]
+        _, _, piv = qr(Th_top.T, pivoting=True, mode='economic')
+        return np.asarray(top[piv[:m]], dtype=int)
