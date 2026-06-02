@@ -11,8 +11,6 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-For MILP support, `pyscipopt` and `cylp` are included in `requirements.txt`.
-
 ## Quick Start
 
 ```python
@@ -26,8 +24,8 @@ U, U_t = sim.run()
 lib = FeatureLibrary(poly_degree=3, max_deriv=4, max_cross_degree=4)
 Theta, names = lib.build(U)
 
-# 3. Recover the operator
-result = OperatorIdentifier(method="omp", n_nonzero=2).fit(Theta, U_t.ravel(), names)
+# 3. Recover the operator (CCP is the recommended default)
+result = OperatorIdentifier(method="ccp").fit(Theta, U_t.ravel(), names)
 print(result)
 # → u_xxx: -1.00,  u u_x: -6.00
 ```
@@ -40,85 +38,106 @@ print(result)
 | `PDESimulator.ks()` | u_t = -u u_x - u_xx - u_xxxx |
 | `PDESimulator.burgers(nu=0.05)` | u_t = -u u_x + ν u_xx |
 | `PDESimulator.allen_cahn(eps=0.01)` | u_t = ε u_xx + u - u³ |
-| `PDESimulator.fisher_kpp(D=0.01, r=1.0)` | u_t = D u_xx + r u(1-u) |
-| `PDESimulator.nls(sigma=1.0)` | i ψ_t + ψ_xx + σ\|ψ\|² ψ = 0 |
+| `PDESimulator.fisher_kpp(D=0.1, r=1.0)` | u_t = D u_xx + r u(1-u) |
+| `PDESimulator.kdv_burgers(nu=0.05, beta=1/6)` | u_t = ν u_xx - u u_x - β u_xxx |
+| `PDESimulator.fitzhugh_nagumo()` | u_t = u_xx + u² - u³ |
+| `PDESimulator.swift_hohenberg()` | u_t = u - u³ - 2 u_xx - u_xxxx |
+| `PDESimulator.nls(sigma=1.0)` | i ψ_t + ψ_xx + σ|ψ|² ψ = 0 |
 | `PDESimulator.custom(rhs_str)` | Arbitrary Mathematica-string RHS |
 
-For coupled two-variable systems (u, v) such as NLS, Sine-Gordon, or
-FitzHugh-Nagumo in first-order form, pass a two-tuple of RHS strings:
-
-```python
-# NLS: u_t = -v_xx - σ(u²+v²)v, v_t = u_xx + σ(u²+v²)u
-sim = PDESimulator.custom(
-    ("-D[D[v]] - 1.0*(u^2+v^2)*v", "D[D[u]] + 1.0*(u^2+v^2)*u"),
-    name="NLS",
-)
-```
-
-The RHS string syntax supports `D[u]` (first derivative), `Sin`, `Cos`,
-`Exp`, `Log`, `Abs`, and arbitrary polynomial combinations of `u` and `v`.
-
 All simulations use periodic boundary conditions on [0, 2π] with
-FFTW-accelerated spectral integration (numpy fallback when g++/fftw3
-are unavailable).
+spectral integration via scipy's `odeint` (adaptive stepping).
+FFTW acceleration available when g++/fftw3 are installed.
 
 ## Recovery Methods
 
 | Method | Key | Description |
 |--------|-----|-------------|
-| OMP | `'omp'` | Orthogonal Matching Pursuit — fast, column-normalised |
-| LassoCV | `'lasso'` | Column-normalised LassoCV with threshold truncation and OLS debiasing |
-| L0 MILP | `'l0_pareto'` | Bisection-based MILP Pareto sweep with SCIP/CBC solvers |
-| L0 SDP2 | `'l0_sdp2'` | Order-2 Lasserre SDP relaxation (P ≤ 9) |
-| CCP | `'ccp'` | Correlation-cut pursuit — spectral-cluster OLS voting + OMP |
+| CCP | `'ccp'` | **Recommended default.** Correlation-cut pursuit: spectral clustering + cross-group normalized OLS voting. Handles up to P=196. |
+| OMP | `'omp'` | Orthogonal Matching Pursuit — fast, column-normalised. Requires known sparsity. |
+| Lasso | `'lasso'` | Column-normalised Lasso with relative threshold (0.1% of max) and OLS debiasing. |
+| L0 MILP | `'l0_pareto'` | Bisection-based MILP Pareto sweep with SCIP/CBC solvers. Provably optimal for given ε. |
+| L0 SDP2 | `'l0_sdp2'` | Order-2 Lasserre SDP relaxation. Tractable for P ≤ ~9. |
 
-## Examples
+### Subsampling
 
-### Benchmarking
-```bash
-python examples/bench_kdv.py          # KdV: J=1.00 all methods
-python examples/bench_burgers.py      # Burgers: J=1.00 all methods
-python examples/bench_allen_cahn.py   # Allen-Cahn: J=1.00 OMP + MILP + CCP
-python examples/bench_ks.py           # KS: J=1.00 MILP + CCP
-python examples/bench_fkpp.py         # FKPP: J=1.00 MILP + CCP
-python examples/benchmark_all.py      # All seven PDEs
-```
-
-### B-spline Smoothing
-```bash
-python examples/bspline_smoothing.py   # Smooths noisy U before differentiation
-```
-
-## Feature Library
+All methods support a `Subsampler` interface for row selection:
 
 ```python
-lib = FeatureLibrary(
-    poly_degree=3,        # max polynomial degree (u, u², u³)
-    max_deriv=4,          # max spatial derivative order (u_xxxx)
-    max_cross_degree=4,   # max total degree in cross-terms (e.g. u²·u_xx)
-    include_constant=True,
-    smooth=False,         # set True for B-spline pre-smoothing
-    smooth_degree=5,      # B-spline polynomial degree
-    smooth_n_knots=25,    # number of knot intervals
-)
-Theta, names = lib.build(U, k)
+from opid.recovery.subsample import FullSubsampler, RandomSubsampler, QRSubsampler, SignalQRSubsampler
+
+# Default: signal-aware pivoted QR (filter tail, then max-volume)
+OperatorIdentifier(method="ccp")
+
+# Explicit:
+OperatorIdentifier(method="ccp", subsampler=QRSubsampler())
+OperatorIdentifier(method="omp", subsampler=RandomSubsampler(seed=42))
 ```
 
-Spatial derivatives are computed via FFT (machine-precision on smooth data).
-When `smooth=True`, each spatial snapshot is projected onto a B-spline
-basis before differentiation, improving derivative quality for noisy data.
+| Sampler | Strategy |
+|---------|----------|
+| `SignalQRSubsampler` (default) | Filter top 2m rows by norm, then pivoted QR — balances signal + rank |
+| `QRSubsampler` | Pivoted QR on all rows — maximises submatrix volume |
+| `RandomSubsampler` | Uniform random m rows |
+| `FullSubsampler` | All rows (no subsampling) |
 
 ## Architecture
 
 ```
 opid/
-├── simulator.py    # PDESimulator — spectral PDE integrator
-├── library.py      # FeatureLibrary — candidate term dictionary
-├── recovery.py     # OperatorIdentifier — OMP / LassoCV / MILP / SDP2 / CCP
-├── _backend/       # SpectralEngine — FFTW-accelerated solver
-├── _bspline/       # B-spline design matrix (Cython extension)
-├── utils.py        # add_noise, jaccard_score, print_recovery_table
-└── examples/       # Usage examples
+├── simulator.py       # PDESimulator — spectral PDE integrator (10 factory methods)
+├── library.py         # FeatureLibrary — candidate term dictionary
+├── utils.py           # jaccard_score, add_noise, relative_error
+├── recovery/          # Sparse recovery (modular package)
+│   ├── __init__.py      # OperatorIdentifier — dispatcher/facade
+│   ├── base.py          # RecoveryResult dataclass, BaseRecovery ABC
+│   ├── ccp.py           # CCPRecovery (recommended default)
+│   ├── omp.py           # OMPRecovery
+│   ├── lasso.py         # LassoRecovery
+│   ├── l0_pareto.py     # L0ParetoRecovery (MILP)
+│   ├── l0_sdp2.py       # L0SDP2Recovery (SDP)
+│   ├── subsample.py     # Subsampler hierarchy
+│   └── _utils.py        # Shared helpers
+├── _backend/          # SpectralEngine — spectral solver + FFTW compilation
+├── _bspline/          # B-spline design matrix (Cython extension)
+├── tests/             # 103 tests (1 skipped: l0_sdp2)
+├── experiments/       # Benchmark scripts
+├── examples/          # PDE gallery and individual benchmarks
+└── benchmark_results/ # Pre-computed results
+```
+
+## Benchmarks
+
+Full benchmarks across 7 PDEs, 16 library sizes (P=12 to P=196), 20 seeds:
+```bash
+python experiments/core_methods.py      # CCP, OMP, Lasso at S/M/L/XL
+python experiments/ccp_scaling.py       # CCP across all library sizes
+python experiments/subsample_compare.py # Compare subsampling strategies
+```
+
+Results are saved to `benchmark_results/`.
+
+### Key Results
+
+CCP is the only method that works across all 7 PDEs at all library sizes:
+
+| PDE | CCP | OMP | Lasso |
+|-----|-----|-----|-------|
+| KdV | 95-100% | 95% | 20% |
+| Burgers | 95-100% | 75-95% | 0-20% |
+| AC | 100% | 30% | 0% |
+| KS | 40-90% | 0% | 0% |
+| FKPP | 45-100% | 0% | 0% |
+| KdVB | 95-100% | 85% | 0% |
+| FHN | 85-90% | 25% | 0% |
+
+SignalQR subsampling recovers 31 more seeds than full-data CCP across all benchmarks.
+
+## Testing
+
+```bash
+python -m pytest tests/ -v           # 103 tests
+python -m pytest tests/ -q           # 104 passed, 1 skipped
 ```
 
 ## Classical PDE Gallery
@@ -129,12 +148,4 @@ python examples/gallery.py     # generates docs/example.png
 
 ![Classical PDE solutions](docs/example.png)
 
-Solves 9 classical evolution equations (KdV-Burgers, KS, Ginzburg-Landau,
-FitzHugh-Nagumo, Fisher-KPP, Nonlinear Schrödinger, Swift-Hohenberg, Eikonal,
-Porous Media) on [0, 2π] and plots solution snapshots.
-
-## Testing
-
-```bash
-python -m pytest tests/ -v
-```
+Solves 9 classical evolution equations on [0, 2π] and plots solution snapshots.
