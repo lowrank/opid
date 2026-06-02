@@ -86,62 +86,125 @@ class L0ParetoRecovery(BaseRecovery):
             ],
         )
 
-        eps_hi = noise_floor * self.eps_factor_hi
-        eps_lo = noise_floor * self.eps_factor_lo
-
-        # CoinError-safe solve: when using CBC, run each MILP in a
-        # subprocess via _milp_worker, since CBC's C++ `terminate()`
-        # kills the Python process.  SCIP and other solvers are safe
-        # to call in-process.
+        # CoinError-safe solve for CBC: run the entire Pareto sweep
+        # in a single subprocess via _milp_worker.  The worker solves
+        # all epsilon values internally and returns the frontier.
+        # SCIP and other solvers are safe in-process.
         if self.milp_solver == "CBC":
-            import subprocess, sys, json, tempfile, os
+            import subprocess, sys, json, tempfile
 
-            worker_file = None
-            prob_cache = {
+            pad_data = {
                 "Theta": Ts_norm.tolist(),
                 "y": ys.tolist(),
                 "M": M_vec.tolist(),
                 "col_scales": col_scales.flatten().tolist(),
+                "noise_floor": noise_floor,
+                "eps_lo_factor": self.eps_factor_lo,
+                "eps_hi_factor": self.eps_factor_hi,
+                "n_eps": self.n_eps,
+                "solver": "CBC",
             }
-            # Write problem data once, reuse file
-            worker_file = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            )
-            json.dump({"eps": 0.0, **prob_cache}, worker_file)
-            worker_path = worker_file.name
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+                json.dump(pad_data, tmp)
+                worker_file = tmp.name
 
-            def _solve(eps_val):
-                # Update eps in the file and run worker
-                with open(worker_path, "w") as f:
-                    json.dump({"eps": float(eps_val), **prob_cache}, f)
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "opid.recovery._milp_worker", worker_file],
+                    capture_output=True, text=True, timeout=600,
+                )
+                frontiers = json.loads(result.stdout.strip()) if result.returncode == 0 and result.stdout.strip() else []
+            except (subprocess.TimeoutExpired, json.JSONDecodeError):
+                frontiers = []
+            finally:
+                import os; os.unlink(worker_file)
+
+            if not frontiers:
+                return RecoveryResult(
+                    method="l0_pareto",
+                    coef=xi_ls / col_scales.flatten(),
+                    support=list(range(P)), names=names,
+                    active_coef=list(xi_ls / col_scales.flatten()),
+                    residual=float(np.linalg.norm(y - Theta @ (xi_ls / col_scales.flatten()))),
+                    meta={"warning": "no_feasible_milp"},
+                )
+
+            # Convert frontiers to (eps, support) pairs
+            pairs = []
+            for f in frontiers:
+                eps_val = f["eps"]
+                z_vals = f["z"]
+                supp = frozenset(i for i in range(len(z_vals)) if z_vals[i] > 0.5)
+                pairs.append((eps_val, supp))
+
+            pairs.sort(key=lambda p: p[0])
+            valid_eps = [p[0] for p in pairs]
+            supports_raw = [p[1] for p in pairs]
+
+            if self.verbose:
+                print(f"  [CBC subprocess] {len(pairs)} sparsity levels")
+
+            from ._utils import _find_plateau_runs
+            runs = _find_plateau_runs(supports_raw, valid_eps)
+            non_trivial = [(s, e, supp) for s, e, supp in runs if len(supp) > 0] or runs
+            rec_s, rec_e, rec_supp = min(non_trivial, key=lambda r: valid_eps[r[0]])
+
+            # Adaptive tightening (re-run in subprocess if needed)
+            eps_tight = valid_eps[rec_s]
+            stable_count = 0
+            while stable_count < 3:
+                eps_tight /= 2.0
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+                    json.dump({"eps": float(eps_tight), "solver": "CBC", **{k: v for k, v in pad_data.items() if k in ("Theta", "y", "M")}}, tmp)
+                    tight_file = tmp.name
                 try:
-                    result = subprocess.run(
-                        [sys.executable, "-m", "opid.recovery._milp_worker", worker_path],
+                    r2 = subprocess.run(
+                        [sys.executable, "-m", "opid.recovery._milp_worker", tight_file],
                         capture_output=True, text=True, timeout=120,
                     )
-                    if result.returncode == 0 and result.stdout.strip():
-                        data = json.loads(result.stdout.strip())
-                        z_vals = data["z"]
-                        xi_vals = np.array(data["xi"]) / col_scales.flatten()
-                        if len(z_vals) > 0:
-                            supp = frozenset(i for i in range(len(z_vals)) if z_vals[i] > 0.5)
-                            return supp, xi_vals
-                except (subprocess.TimeoutExpired, Exception):
-                    pass
-                return None, None
-
-        else:
-
-            def _solve(eps_val):
-                eps_param.value = eps_val
-                try:
-                    prob.solve(solver=getattr(cp, self.milp_solver), warm_start=False)
+                    ftight = json.loads(r2.stdout.strip()) if r2.returncode == 0 and r2.stdout.strip() else [{"z": []}]
+                    sm_new = frozenset(i for i in range(len(ftight[0]["z"])) if ftight[0]["z"][i] > 0.5) if ftight else None
                 except Exception:
-                    return None, None
-                if prob.status in ("optimal", "optimal_inaccurate"):
-                    supp = frozenset(i for i in range(P) if float(z_var.value[i]) > 0.5)
-                    return supp, xi_var.value / col_scales.flatten()
-                return None, None
+                    sm_new = None
+                finally:
+                    import os; os.unlink(tight_file)
+                if sm_new is None: break
+                if sm_new == rec_supp:
+                    stable_count += 1
+                else:
+                    rec_supp = sm_new
+                    stable_count = 0
+
+            rec_cols = sorted(rec_supp)
+            if rec_cols:
+                ols_coef, _, _, _ = np.linalg.lstsq(Theta[:, rec_cols], y, rcond=None)
+            else:
+                ols_coef = np.array([])
+
+            thresh = self.threshold_coef if self.threshold_coef is not None else 1e-4
+            coef = np.zeros(P)
+            for j, col in enumerate(rec_cols):
+                coef[col] = float(ols_coef[j])
+            if thresh > 0 and rec_cols:
+                max_abs = max(abs(coef[c]) for c in rec_cols)
+                keep = [c for c in rec_cols if abs(coef[c]) > thresh * max_abs]
+                if keep:
+                    rec_cols = keep
+                    ols_coef2, _, _, _ = np.linalg.lstsq(Theta[:, rec_cols], y, rcond=None)
+                    coef = np.zeros(P)
+                    for j, col in enumerate(rec_cols):
+                        coef[col] = float(ols_coef2[j])
+
+            return RecoveryResult(
+                method="l0_pareto", coef=coef,
+                support=rec_cols, names=[names[i] for i in rec_cols],
+                active_coef=[float(coef[i]) for i in rec_cols],
+                residual=float(np.linalg.norm(y - Theta @ coef)),
+            )
+
+        # ── In-process solve (SCIP, GLPK, etc.) ────────────────────
+        eps_hi = noise_floor * self.eps_factor_hi
+        eps_lo = noise_floor * self.eps_factor_lo
 
         sl, _ = _solve(eps_lo)
         while sl is None and eps_lo < eps_hi * 0.9:
