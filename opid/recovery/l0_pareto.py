@@ -72,7 +72,10 @@ class L0ParetoRecovery(BaseRecovery):
         noise_floor = y_scale_full * 0.1
 
         P = Ts_norm.shape[1]
-        M_tight = max(2.0 * float(np.max(np.abs(xi_ls))), 1.0)
+        # Per-column Big-M: each term gets its own bound based on its OLS coefficient.
+        # Fixes CoinError crashes when coefficients have vastly different magnitudes
+        # (e.g. AC: u³ at 382 vs u_xx at 21 with uniform M=764).
+        M_vec = np.maximum(2.0 * np.abs(xi_ls), 0.1)
 
         xi_var = cp.Variable(P)
         z_var = cp.Variable(P, boolean=True)
@@ -82,8 +85,8 @@ class L0ParetoRecovery(BaseRecovery):
             cp.Minimize(cp.sum(z_var)),
             [
                 cp.norm(ys - Ts_norm @ xi_var, 1) <= eps_param,
-                xi_var <= M_tight * z_var,
-                xi_var >= -M_tight * z_var,
+                xi_var <= cp.multiply(M_vec, z_var),
+                xi_var >= cp.multiply(-M_vec, z_var),
             ],
         )
 
@@ -232,7 +235,7 @@ class L0ParetoRecovery(BaseRecovery):
                     (s, e, [names[i] for i in supp])
                     for s, e, supp in _find_plateau_runs(supports_raw, valid_eps)
                 ],
-                "M_tight": M_tight,
+                "M_vec": M_vec.tolist(),
                 "noise_floor": noise_floor,
             },
         )
