@@ -9,7 +9,7 @@ from opid import PDESimulator, FeatureLibrary, OperatorIdentifier, jaccard_score
 
 N_SEEDS = 20
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "benchmark_data")
-RESULT_FILE = os.path.join(os.path.dirname(__file__), "..", "benchmark_results", "ccp_all_sizes.json")
+RESULT_FILE = os.path.join(os.path.dirname(__file__), "..", "benchmark_results", "ccp_scaling.json")
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(RESULT_FILE), exist_ok=True)
 
