@@ -295,19 +295,18 @@ class PDESimulator:
     def kdv(cls, **kwargs) -> "PDESimulator":
         """KdV: u_t = -6 u u_x - u_xxx."""
         sim = cls(**kwargs)
-        sim._name     = "KdV"
-        sim._rhs_str  = "-6*D[u]*u - D[D[D[u]]]"
-        sim._numpy_rhs = _build_kdv_rhs(sim.N)
+        sim._name       = "KdV"
+        sim._rhs_str    = "-6*D[u]*u - D[D[D[u]]]"
+        sim._numpy_rhs  = _build_kdv_rhs(sim.N)
         return sim
 
     @classmethod
     def ks(cls, **kwargs) -> "PDESimulator":
         """Kuramoto–Sivashinsky: u_t = -u u_x - u_xx - u_xxxx."""
         sim = cls(**kwargs)
-        sim._name     = "KS"
-        # conservative form: -u u_x = -d/dx(u²/2)
-        sim._rhs_str  = "-D[u]*u/2 + D[D[u]] - D[D[D[D[u]]]]"
-        sim._numpy_rhs = _build_ks_rhs(sim.N)
+        sim._name       = "KS"
+        sim._rhs_str    = "-D[u]*u/2 + D[D[u]] - D[D[D[D[u]]]]"
+        sim._numpy_rhs  = _build_ks_rhs(sim.N)
         return sim
 
     @classmethod

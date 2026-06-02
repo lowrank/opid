@@ -353,7 +353,7 @@ class SpectralEngine:
         rtol: float = 1e-9,
         atol: float = 1e-9,
         mxstep: int = 20000,
-        method: str = "rk4",
+        method: str = "odeint",
     ) -> np.ndarray:
         """
         Integrate the PDE from ``u0`` (physical space) over ``t_span``.
