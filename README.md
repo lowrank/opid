@@ -125,17 +125,17 @@ but is 1000× slower (15-30 min/seed vs 0.5 s) and crashes on AC/KS.
 
 | PDE | CCP | OMP | Lasso | L0 CBC |
 |-----|-----|-----|-------|--------|
-| KdV | 95-100% | 95% | 20% | not run |
-| Burgers | 95-100% | 75-95% | 0-20% | not run |
+| KdV | 95-100% | 95% | 20% | — |
+| Burgers | 95-100% | 75-95% | 0-20% | — |
 | AC | 100% | 30% | 0% | 100% |
-| KS | 80-90% | 0% | 0% | 33% |
-| FKPP | 70-100% | 0% | 0% | not run |
-| KdVB | 95-100% | 85% | 0% | not run |
+| KS | 80-90% | 0% | 0% | 85%* |
+| FKPP | 70-100% | 0% | 0% | — |
+| KdVB | 95-100% | 85% | 0% | — |
 | FHN | 90% | 25% | 0% | 10% |
 
-CCP uses SignalQR subsampling (filter tail + max-volume) with normalized OLS voting.
-CBC uses per-column Big-M + subprocess-safe CoinError handling + n_eps=30.
-2000 samples for KS; 500 for AC. CCP is 50-2000× faster and more robust.
+CCP uses SignalQR subsampling (4000 rows). L0 CBC uses per-column Big-M,
+subprocess-safe CoinError handling, n_eps=30, and 4000 samples.
+KS M 20/20, L 14/20 at 4000 samples (was 6/40 at 500). CCP is 50-2000× faster.
 
 SignalQR subsampling recovers 31 more seeds than full-data CCP across all benchmarks.
 
