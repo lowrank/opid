@@ -159,10 +159,16 @@ class L0ParetoRecovery(BaseRecovery):
             non_trivial = [(s, e, supp) for s, e, supp in runs if len(supp) > 0] or runs
             rec_s, rec_e, rec_supp = min(non_trivial, key=lambda r: valid_eps[r[0]])
 
-            # Adaptive tightening (re-run in subprocess if needed)
+            # Early exit: if OLS already fits full data well, skip tightening
+            rec_cols_cbc = sorted(rec_supp)
+            ols_cbc, _, _, _ = np.linalg.lstsq(Theta[:, rec_cols_cbc], y, rcond=None)
+            ols_cbc_err = float(np.linalg.norm(y - Theta[:, rec_cols_cbc] @ ols_cbc, 1))
+            early_exit_cbc = ols_cbc_err <= noise_floor * 0.5
+
+            # Adaptive tightening (skip if early exit)
             eps_tight = valid_eps[rec_s]
             stable_count = 0
-            while stable_count < 3:
+            while not early_exit_cbc and stable_count < 3:
                 eps_tight /= 2.0
                 if eps_tight < min_eps_tight: break
                 # ... subprocess call ...
@@ -307,9 +313,19 @@ class L0ParetoRecovery(BaseRecovery):
             print(f"  selected: k={len(rec_supp)}  "
                   f"eps=[{valid_eps[rec_s]:.3e}, {valid_eps[rec_e]:.3e}]")
 
+        # Early exit: if OLS on the selected support already fits the
+        # full data within the noise floor, accept it and skip tightening.
+        rec_cols_now = sorted(rec_supp)
+        ols_early, _, _, _ = np.linalg.lstsq(Theta[:, rec_cols_now], y, rcond=None)
+        ols_err = float(np.linalg.norm(y - Theta[:, rec_cols_now] @ ols_early, 1))
+        early_exit = ols_err <= noise_floor * 0.5
+        if self.verbose and early_exit:
+            print(f"  early exit: OLS L1 err={ols_err:.1e} <= noise_floor*0.5={noise_floor*0.5:.1e}")
+
+        # Adaptive tightening (skip if early exit)
         eps_tight = valid_eps[rec_s]
         stable_count = 0
-        while stable_count < 3:
+        while not early_exit and stable_count < 3:
             eps_tight /= 2.0
             if eps_tight < min_eps_tight: break
             sm_new, _ = _solve(eps_tight)
