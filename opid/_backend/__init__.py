@@ -201,7 +201,7 @@ def _compile_rhs(rhs_str: Union[str, Tuple[str, str]], is_complex: bool) -> Opti
     l_flags = ["-lm", "-lfftw3"]
     cmd     = ["g++", str(cpp_path)] + c_flags + ["-o", str(so_path)] + l_flags
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
     if result.returncode != 0:
         logger.warning("g++ compilation failed:\n%s", result.stderr)
         cpp_path.unlink(missing_ok=True)
@@ -289,12 +289,14 @@ class SpectralEngine:
         rhs_str: Optional[Union[str, Tuple[str, str]]],
         numpy_rhs=None,
         is_complex: bool = False,
+        dt_max: Optional[float] = None,
     ):
         self.rhs_str    = rhs_str
         self.is_complex = is_complex
         self._compiled_call = None
         self._numpy_rhs     = numpy_rhs
         self._sympy_repr    = None   # cached sympy expression(s)
+        self.dt_max     = dt_max
 
         if rhs_str is not None:
             self._try_compile()
@@ -304,7 +306,14 @@ class SpectralEngine:
     # ------------------------------------------------------------------ #
 
     def _try_compile(self):
-        so = _compile_rhs(self.rhs_str, self.is_complex)
+        try:
+            so = _compile_rhs(self.rhs_str, self.is_complex)
+        except subprocess.TimeoutExpired:
+            logger.warning("Compilation timed out, falling back to numpy.")
+            return
+        except Exception as e:
+            logger.warning("Compilation failed: %s", e)
+            return
         if so is None:
             logger.info("Falling back to numpy spectral RHS.")
             return
@@ -343,26 +352,60 @@ class SpectralEngine:
         t_span: np.ndarray,
         rtol: float = 1e-9,
         atol: float = 1e-9,
+        mxstep: int = 20000,
+        method: str = "rk4",
     ) -> np.ndarray:
         """
         Integrate the PDE from ``u0`` (physical space) over ``t_span``.
 
-        Parameters
-        ----------
-        u0     : ndarray (N,) or (2N,)   Initial condition, physical space.
-        t_span : ndarray (n_t,)          Output time points (must start at 0).
-        rtol, atol : float               ODE solver tolerances.
-
-        Returns
-        -------
-        sol : ndarray (n_t, N) or (n_t, 2N)   Physical-space snapshots.
+        method='odeint' uses scipy's classic wrapper; 'lsoda' uses
+        solve_ivp with explicit jac=None (avoids known hang).
         """
+        if method == "lsoda":
+            from scipy.integrate import solve_ivp
+            sol = solve_ivp(
+                lambda t, y: self.rhs_physical(y),
+                (t_span[0], t_span[-1]),
+                u0, t_eval=t_span,
+                method='LSODA', rtol=rtol, atol=atol,
+                jac=None,  # explicit None avoids hang (#10309)
+            )
+            return sol.y.T
+        if method == "rk4":
+            return self._solve_rk4(u0, t_span)
         return odeint(
             lambda y, t: self.rhs_physical(y),
             u0, t_span,
             rtol=rtol, atol=atol,
             tfirst=False,
+            mxstep=mxstep,
         )
+
+    def _solve_rk4(self, u0: np.ndarray, t_span: np.ndarray) -> np.ndarray:
+        """PDE-aware fixed-step RK4 with CFL-based sub-stepping."""
+        dt_out = t_span[1] - t_span[0]
+        N = len(u0)
+        if self.dt_max is not None:
+            dt_max = self.dt_max
+        else:
+            dt_max = 0.5 / (max(N, 1) * max(N, 1)) / 4
+        n_sub = max(1, int(np.ceil(dt_out / dt_max)))
+        dt = dt_out / n_sub
+        n_t = len(t_span)
+        u = np.asarray(u0, dtype=np.float64)
+        sol = np.zeros((n_t, len(u)), dtype=np.float64)
+        sol[0] = u.copy()
+        for i in range(1, n_t):
+            for _ in range(n_sub):
+                k1 = self.rhs_physical(u)
+                k2 = self.rhs_physical(u + 0.5 * dt * k1)
+                k3 = self.rhs_physical(u + 0.5 * dt * k2)
+                k4 = self.rhs_physical(u + dt * k3)
+                u = u + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
+            if np.isnan(u).any():
+                break
+            sol[i] = u.copy()
+        return sol
 
     # ------------------------------------------------------------------ #
     #  Symbolic / display                                                  #
@@ -483,7 +526,7 @@ class EvolutionEquation:
     ...                          "+u_xx + sigma*(u^2+v^2)*u"])
     """
 
-    def __init__(self, funcs_list: list):
+    def __init__(self, funcs_list: list, dt_max: Optional[float] = None):
         if len(funcs_list) == 2:
             self.func_str_real    = funcs_list[0]
             self.func_str_complex = funcs_list[1]
@@ -494,10 +537,11 @@ class EvolutionEquation:
             self.complex       = False
             rhs_str = self.func_str_real
 
-        # Build sympy repr eagerly (used by eval / __repr__)
-        self._engine = SpectralEngine(rhs_str=rhs_str, is_complex=self.complex)
-        # Trigger compilation lazily via wrap()
-        self._engine._compiled_call = None   # reset; wrap() will recompile
+        self._dt_max = dt_max
+
+        self._engine = SpectralEngine(rhs_str=rhs_str, is_complex=self.complex,
+                                      dt_max=dt_max)
+        self._engine._compiled_call = None
         self.model_lib = None
 
     # ------------------------------------------------------------------ #
@@ -545,6 +589,7 @@ class EvolutionEquation:
         t_span: np.ndarray,
         rtol: float = 1e-12,
         atol: float = 1e-12,
+        dt_max: Optional[float] = None,
     ) -> np.ndarray:
         """
         Integrate from ``initial`` (physical space) over ``t_span``.
@@ -553,6 +598,8 @@ class EvolutionEquation:
         -------
         sol : ndarray (n_t, N) — physical-space snapshots (rows = time).
         """
+        if dt_max is not None:
+            self._engine.dt_max = dt_max
         return self._engine.solve(initial, t_span, rtol=rtol, atol=atol)
 
     # ------------------------------------------------------------------ #

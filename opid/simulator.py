@@ -25,11 +25,12 @@ Supported equations (factory methods)
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 import numpy as np
 
-from opid._backend import SpectralEngine
+if TYPE_CHECKING:
+    from opid._backend import SpectralEngine
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,36 @@ def _build_nls_rhs(N: int, sigma: float):
         du = -vxx - sigma * mod2 * v
         dv =  uxx + sigma * mod2 * u
         return np.concatenate([du, dv])
+    return rhs
+
+
+def _build_kdv_burgers_rhs(N: int, nu: float, beta: float):
+    k = np.fft.rfftfreq(N, d=1.0 / N)
+    def rhs(u):
+        U    = np.fft.rfft(u)
+        ux   = np.fft.irfft(1j * k * U, n=N)
+        uxx  = np.fft.irfft(-(k ** 2) * U, n=N)
+        uxxx = np.fft.irfft(-(1j * k) ** 3 * U, n=N)
+        return nu * uxx - u * ux - beta * uxxx
+    return rhs
+
+
+def _build_swift_hohenberg_rhs(N: int):
+    k = np.fft.rfftfreq(N, d=1.0 / N)
+    def rhs(u):
+        U     = np.fft.rfft(u)
+        uxx   = np.fft.irfft(-(k ** 2) * U, n=N)
+        uxxxx = np.fft.irfft((k ** 4) * U, n=N)
+        return u - u ** 3 - 2.0 * uxx - uxxxx
+    return rhs
+
+
+def _build_fitzhugh_nagumo_rhs(N: int):
+    k = np.fft.rfftfreq(N, d=1.0 / N)
+    def rhs(u):
+        U   = np.fft.rfft(u)
+        uxx = np.fft.irfft(-(k ** 2) * U, n=N)
+        return uxx + u ** 2 - u ** 3
     return rhs
 
 
@@ -235,6 +266,7 @@ class PDESimulator:
         n_modes: int = 8,
         seed: Optional[int] = 42,
         backend: str = "auto",
+        dt_max: Optional[float] = None,
     ):
         self.N       = N
         self.T       = T
@@ -242,6 +274,7 @@ class PDESimulator:
         self.n_modes = n_modes
         self.seed    = seed
         self.backend = backend
+        self.dt_max  = dt_max
 
         self.x = np.linspace(0, 2 * np.pi, N, endpoint=False)
         self.k = np.fft.rfftfreq(N, d=1.0 / N)   # length N//2+1
@@ -331,6 +364,36 @@ class PDESimulator:
         return sim
 
     @classmethod
+    def kdv_burgers(cls, nu: float = 0.05, beta: float = 1.0 / 6,
+                    **kwargs) -> "PDESimulator":
+        """KdV-Burgers: u_t = ν u_xx - u u_x - β u_xxx."""
+        sim = cls(**kwargs)
+        sim._name     = "KdV-Burgers"
+        sim._rhs_str  = f"{nu}*D[D[u]] - u*D[u] - ({beta})*D[D[D[u]]]"
+        sim._numpy_rhs = _build_kdv_burgers_rhs(sim.N, nu, beta)
+        sim.nu        = nu
+        sim.beta      = beta
+        return sim
+
+    @classmethod
+    def swift_hohenberg(cls, **kwargs) -> "PDESimulator":
+        """Swift-Hohenberg: u_t = u - u³ - 2 u_xx - u_xxxx."""
+        sim = cls(**kwargs)
+        sim._name     = "Swift-Hohenberg"
+        sim._rhs_str  = "u - u^3 - (2*D[D[u]] + D[D[D[D[u]]]])"
+        sim._numpy_rhs = _build_swift_hohenberg_rhs(sim.N)
+        return sim
+
+    @classmethod
+    def fitzhugh_nagumo(cls, **kwargs) -> "PDESimulator":
+        """FitzHugh-Nagumo (1D): u_t = u_xx + u² - u³."""
+        sim = cls(**kwargs)
+        sim._name     = "FitzHugh-Nagumo"
+        sim._rhs_str  = "D[D[u]] + u^2 - u^3"
+        sim._numpy_rhs = _build_fitzhugh_nagumo_rhs(sim.N)
+        return sim
+
+    @classmethod
     def custom(cls, rhs_str, name: str = "custom", **kwargs) -> "PDESimulator":
         """
         Arbitrary PDE via Mathematica-string RHS.
@@ -395,8 +458,9 @@ class PDESimulator:
     #  Integration                                                         #
     # ------------------------------------------------------------------ #
 
-    def _get_engine(self) -> SpectralEngine:
+    def _get_engine(self) -> "SpectralEngine":
         """Lazily construct (and cache) the SpectralEngine."""
+        from opid._backend import SpectralEngine  # deferred import
         if self._engine is not None:
             return self._engine
 
@@ -405,12 +469,13 @@ class PDESimulator:
         # Respect backend override
         rhs_str = self._rhs_str
         if self.backend == "numpy":
-            rhs_str = None   # suppress compilation
+            rhs_str = None   # suppress compilation, use numpy_rhs instead
 
         self._engine = SpectralEngine(
             rhs_str=rhs_str,
             numpy_rhs=numpy_rhs,
             is_complex=self._is_complex,
+            dt_max=self.dt_max,
         )
 
         if self.backend == "fftw" and self._engine.backend != "fftw_compiled":
@@ -419,9 +484,19 @@ class PDESimulator:
             )
         return self._engine
 
-    def run(self) -> Tuple[np.ndarray, np.ndarray]:
+    def run(self, check_nan: bool = True, check_convergence: bool = False,
+            conv_tol: float = 0.01) -> Tuple[np.ndarray, np.ndarray]:
         """
         Integrate the PDE and return ``(U, U_t)``.
+
+        Parameters
+        ----------
+        check_nan : bool
+            Raise RuntimeError if NaN is found in the solution.
+        check_convergence : bool
+            Verify convergence by comparing with a finer (2× n_t) solution.
+        conv_tol : float
+            Maximum relative L2 error for convergence check.
 
         Returns
         -------
@@ -447,7 +522,22 @@ class PDESimulator:
             ic = u0
 
         # Integrate (physical space throughout)
-        sol = engine.solve(ic, t_span)   # (n_t, N) or (n_t, 2N)
+        sol = engine.solve(ic, t_span)
+
+        if check_nan and np.isnan(sol).any():
+            raise RuntimeError(f"NaN in solution for {self._name} seed={self.seed}")
+
+        if check_convergence and not self._is_complex:
+            t_fine = np.linspace(0.0, self.T, self.n_t * 2)
+            sol_fine = engine.solve(ic, t_fine)
+            if np.isnan(sol_fine).any():
+                raise RuntimeError(f"NaN in fine solution for {self._name} seed={self.seed}")
+            # Interpolate fine solution onto t_span
+            interp = np.array([sol_fine[2 * j] for j in range(self.n_t)])
+            err = np.linalg.norm(sol - interp) / (np.linalg.norm(sol) + 1e-10)
+            if err > conv_tol:
+                logger.warning("Convergence check failed for %s seed=%s: err=%.4f > %.4f",
+                               self._name, self.seed, err, conv_tol)
 
         if self._is_complex:
             N = self.N

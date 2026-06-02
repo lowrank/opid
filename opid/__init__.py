@@ -32,11 +32,6 @@ Two-component (coupled) systems
 >>> U, U_t = sim.run()   # U is the real part (u-component)
 """
 
-from .simulator import PDESimulator
-from .library import FeatureLibrary
-from .recovery import OperatorIdentifier, RecoveryResult
-from .utils import add_noise, relative_error, print_recovery_table, jaccard_score
-
 __version__ = "0.2.0"
 __all__ = [
     "PDESimulator",
@@ -48,3 +43,8 @@ __all__ = [
     "relative_error",
     "print_recovery_table",
 ]
+
+from .simulator import PDESimulator
+from .library import FeatureLibrary
+from .recovery import OperatorIdentifier, RecoveryResult
+from .utils import add_noise, relative_error, print_recovery_table, jaccard_score

@@ -10,6 +10,7 @@ DICTS = [
     ("S",  2, 3, 2),   # P=12
     ("M",  2, 4, 3),   # P=23
     ("L",  3, 4, 4),   # P=40
+    ("XL", 3, 5, 5),   # P=59  (no u⁴, helps FKPP)
 ]
 
 def run_benchmark(name, sim, true_set):

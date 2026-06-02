@@ -1,0 +1,235 @@
+"""Mixed-Integer L0 Pareto recovery via cvxpy MILP."""
+
+from __future__ import annotations
+
+import numpy as np
+
+from .base import BaseRecovery, RecoveryResult
+from ._utils import _find_plateau_runs
+
+
+class L0ParetoRecovery(BaseRecovery):
+    """L0 minimisation with Pareto sweep over error tolerance epsilon.
+
+    Uses a MILP with big-M big‑M bounding, a bisection-based Pareto sweep
+    to find the sparsity-epsilon frontier, plateau detection for stable
+    support selection, and final OLS debiasing on the full data.
+    """
+
+    def __init__(
+        self,
+        n_eps=30,
+        eps_factor_hi=100.0,
+        eps_factor_lo=0.01,
+        max_samples=5000,
+        milp_solver="GLPK_MI",
+        threshold_coef=None,
+        random_state=42,
+        max_rounds=3,
+        verbose=False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.n_eps = n_eps
+        self.eps_factor_hi = eps_factor_hi
+        self.eps_factor_lo = eps_factor_lo
+        self.max_samples = max_samples
+        self.milp_solver = milp_solver
+        self.threshold_coef = threshold_coef
+        self.random_state = random_state
+        self.max_rounds = max_rounds
+        self.verbose = verbose
+
+    def _fit(self, Theta, y, names):
+        try:
+            import cvxpy as cp
+        except ImportError as e:
+            raise ImportError("cvxpy is required for the 'l0_pareto' method.") from e
+
+        rng = np.random.default_rng(self.random_state)
+        n = len(y)
+        m = min(self.max_samples, n)
+        idx = rng.choice(n, m, replace=False)
+        Ts = Theta[idx]
+        ys = y[idx]
+
+        col_scales = np.linalg.norm(Ts, axis=0, keepdims=True)
+        col_scales[col_scales < 1e-14] = 1.0
+        Ts_norm = Ts / col_scales
+
+        try:
+            xi_ls, _, _, _ = np.linalg.lstsq(Ts_norm, ys, rcond=None)
+            ols_residual = float(np.linalg.norm(ys - Ts_norm @ xi_ls, 1))
+        except np.linalg.LinAlgError:
+            reg = 1e-6 * np.eye(Ts_norm.shape[1])
+            xi_ls = np.linalg.solve(Ts_norm.T @ Ts_norm + reg, Ts_norm.T @ ys)
+            ols_residual = float(np.linalg.norm(ys - Ts_norm @ xi_ls, 1))
+
+        y_scale_full = float(np.linalg.norm(y, 1))
+        noise_floor = y_scale_full * 0.1
+
+        P = Ts_norm.shape[1]
+        M_tight = max(2.0 * float(np.max(np.abs(xi_ls))), 1.0)
+
+        xi_var = cp.Variable(P)
+        z_var = cp.Variable(P, boolean=True)
+        eps_param = cp.Parameter(nonneg=True)
+
+        prob = cp.Problem(
+            cp.Minimize(cp.sum(z_var)),
+            [
+                cp.norm(ys - Ts_norm @ xi_var, 1) <= eps_param,
+                xi_var <= M_tight * z_var,
+                xi_var >= -M_tight * z_var,
+            ],
+        )
+
+        eps_hi = noise_floor * self.eps_factor_hi
+        eps_lo = noise_floor * self.eps_factor_lo
+
+        def _solve(eps_val):
+            eps_param.value = eps_val
+            try:
+                prob.solve(solver=getattr(cp, self.milp_solver), warm_start=False)
+            except Exception:
+                return None, None
+            if prob.status in ("optimal", "optimal_inaccurate"):
+                supp = frozenset(i for i in range(P) if float(z_var.value[i]) > 0.5)
+                return supp, xi_var.value / col_scales.flatten()
+            return None, None
+
+        sl, _ = _solve(eps_lo)
+        while sl is None and eps_lo < eps_hi * 0.9:
+            eps_lo *= 2.0
+            sl, _ = _solve(eps_lo)
+            if self.verbose:
+                print(f"  eps_lo → {eps_lo:.3e} {'feasible' if sl is not None else 'infeasible'}")
+
+        sh, _ = _solve(eps_hi)
+        k_hi = len(sh) if sh is not None else 0
+        k_lo = len(sl) if sl is not None else P
+        if self.verbose:
+            print(f"  eps [{eps_lo:.1e}, {eps_hi:.1e}]  k_lo={k_lo}  k_hi={k_hi}")
+
+        frontier = {k_lo: eps_lo, k_hi: eps_hi}
+
+        for k in range(k_hi + 1, k_lo):
+            left = frontier.get(k + 1, eps_lo)
+            right = frontier.get(k - 1, eps_hi)
+            if left >= right:
+                frontier[k] = right
+                continue
+            for _ in range(self.n_eps // max(k_lo - k_hi, 1)):
+                mid = np.sqrt(left * right)
+                sm, _ = _solve(mid)
+                if sm is None:
+                    break
+                km = len(sm)
+                if self.verbose:
+                    print(f"  k={k} mid={mid:.3e} → k={km}")
+                if km <= k:
+                    right = mid
+                else:
+                    left = mid
+                if right / left < 1.02:
+                    break
+            frontier[k] = right
+
+        pairs = []
+        for eps in sorted(frontier.values()):
+            sm, _ = _solve(eps)
+            if sm is not None:
+                pairs.append((eps, sm))
+
+        pairs = [(e, s) for e, s in pairs if s is not None]
+        pairs.sort(key=lambda p: p[0])
+        if not pairs:
+            return RecoveryResult(
+                method="l0_pareto",
+                coef=xi_ls / col_scales.flatten(),
+                support=list(range(P)),
+                names=names,
+                active_coef=list(xi_ls / col_scales.flatten()),
+                residual=float(np.linalg.norm(y - Theta @ (xi_ls / col_scales.flatten()))),
+                meta={"warning": "no_feasible_milp"},
+            )
+
+        valid_eps = [p[0] for p in pairs]
+        supports_raw = [p[1] for p in pairs]
+
+        if self.verbose:
+            print(f"  {len(pairs)} distinct sparsity levels found")
+
+        runs = _find_plateau_runs(supports_raw, valid_eps)
+
+        if self.verbose and len(runs) > 1:
+            for s, e, supp in runs:
+                print(f"    k={len(supp)}  eps=[{valid_eps[s]:.3e}, {valid_eps[e]:.3e}]  len={e-s+1}")
+
+        non_trivial = [(s, e, supp) for s, e, supp in runs if len(supp) > 0]
+        if not non_trivial:
+            non_trivial = runs
+        rec_s, rec_e, rec_supp = min(non_trivial, key=lambda r: valid_eps[r[0]])
+
+        if self.verbose:
+            print(f"  selected: k={len(rec_supp)}  "
+                  f"eps=[{valid_eps[rec_s]:.3e}, {valid_eps[rec_e]:.3e}]")
+
+        eps_tight = valid_eps[rec_s]
+        stable_count = 0
+        while stable_count < 3:
+            eps_tight /= 2.0
+            sm_new, _ = _solve(eps_tight)
+            if sm_new is None:
+                break
+            if sm_new == rec_supp:
+                stable_count += 1
+                if self.verbose:
+                    print(f"  tight eps={eps_tight:.3e}: k={len(sm_new)} (stable {stable_count}/3)")
+            else:
+                rec_supp = sm_new
+                stable_count = 0
+                if self.verbose:
+                    print(f"  tight eps={eps_tight:.3e}: k={len(sm_new)} (changed, reset)")
+
+        rec_cols = sorted(rec_supp)
+        if rec_cols:
+            ols_coef, _, _, _ = np.linalg.lstsq(Theta[:, rec_cols], y, rcond=None)
+        else:
+            ols_coef = np.array([])
+
+        thresh = self.threshold_coef if self.threshold_coef is not None else 1e-4
+        coef = np.zeros(P)
+        for j, col in enumerate(rec_cols):
+            coef[col] = float(ols_coef[j])
+
+        if thresh > 0 and rec_cols:
+            max_abs = float(np.max(np.abs(coef)))
+            if max_abs > 0:
+                keep = [c for c in rec_cols if abs(coef[c]) > thresh * max_abs]
+                if 1 <= len(keep) < len(rec_cols):
+                    ols_new, _, _, _ = np.linalg.lstsq(Theta[:, keep], y, rcond=None)
+                    coef = np.zeros(P)
+                    for j, col in enumerate(keep):
+                        coef[col] = float(ols_new[j])
+                    rec_cols = keep
+
+        residual = float(np.linalg.norm(y - Theta @ coef))
+        return RecoveryResult(
+            method="l0_pareto",
+            coef=coef,
+            support=rec_cols,
+            names=[names[i] for i in rec_cols],
+            active_coef=[float(coef[i]) for i in rec_cols],
+            residual=residual,
+            meta={
+                "n_feasible": len(valid_eps),
+                "plateau_eps_range": (valid_eps[rec_s], valid_eps[rec_e]),
+                "all_runs": [
+                    (s, e, [names[i] for i in supp])
+                    for s, e, supp in _find_plateau_runs(supports_raw, valid_eps)
+                ],
+                "M_tight": M_tight,
+                "noise_floor": noise_floor,
+            },
+        )

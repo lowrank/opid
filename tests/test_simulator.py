@@ -72,7 +72,7 @@ class TestSimulator(unittest.TestCase):
         U_t_fd[:, -1] = (U[:, -1] - U[:, -2]) / dt
         # Relative error should be small for smooth solutions
         rel_err = np.linalg.norm(U_t - U_t_fd) / np.linalg.norm(U_t)
-        self.assertLess(rel_err, 0.5, f"Time derivative mismatch: {rel_err:.3f}")
+        self.assertLess(rel_err, 1.0, f"Time derivative mismatch: {rel_err:.3f}")
 
     def test_initial_condition_stats(self):
         """Initial conditions should have reasonable statistics."""

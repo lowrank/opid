@@ -1,0 +1,620 @@
+============================================================
+  Task 1: Simulation data
+============================================================
+
+============================================================
+  Task 2: Methods × Libraries
+============================================================
+  FKPP_seed4|S|Lasso  J=0.38 1460.1s
+  FKPP_seed4|S|CCP  J=1.00 0.6s
+  FKPP_seed4|M|OMP  J=0.20 0.2s  FKPP_seed3|M|Lasso  J=0.25 1626.3s
+  FKPP_seed3|M|CCP  J=1.00 0.4s
+  FKPP_seed3|L|OMP  J=0.50 0.1s
+  FKPP_seed3|L|Lasso  J=0.12 786.2s
+  FKPP_seed3|L|CCP  J=1.00 13.3s
+  FKPP_seed4|S|OMP  J=0.20 0.1s
+  FKPP_seed4|S|Lasso  J=0.38 1588.2s
+  FKPP_seed4|S|CCP  J=1.00 0.8s
+  FKPP_seed4|M|OMP  J=0.20 0.4s
+  FKPP_seed5|M|Lasso  J=0.27 3173.9s
+  FKPP_seed5|M|CCP  J=1.00 4.4s
+  FKPP_seed5|L|OMP  J=0.20 0.1s
+  FKPP_seed5|L|Lasso  J=0.15 1794.7s
+  FKPP_seed5|L|CCP  J=1.00 20.4s
+  FKPP_seed6|S|OMP  J=0.20 0.4s
+  FKPP_seed6|S|Lasso  J=0.43 1482.5s
+  FKPP_seed6|S|CCP  J=1.00 0.2s
+  FKPP_seed6|M|OMP  J=0.20 0.5s   FKPP_seed6|M|Lasso  J=0.27 4384.6s
+  FKPP_seed6|M|CCP  J=1.00 3.1s
+  FKPP_seed6|L|OMP  J=0.20 0.3s
+  FKPP_seed6|L|Lasso  J=0.14 3357.0s
+  FKPP_seed6|L|CCP  J=1.00 6.1s
+  FKPP_seed7|S|OMP  J=0.20 0.3s
+  FKPP_seed7|S|Lasso  J=0.22 1445.4s
+  FKPP_seed7|S|CCP  J=1.00 0.2s
+  FKPP_seed7|M|OMP  J=0.20 0.1s
+  FKPP_seed7|M|Lasso  J=0.15 1689.4s
+  FKPP_seed7|M|CCP  J=1.00 4.0s
+  FKPP_seed7|L|OMP  J=0.20 0.2s
+  FKPP_seed6|L|Lasso  J=0.14 3054.5s
+  FKPP_seed6|L|CCP  J=1.00 14.7s
+  FKPP_seed7|S|OMP  J=0.20 0.2    FKPP_seed7|S|Lasso  J=0.22 1547.3s
+  FKPP_seed7|S|CCP  J=1.00 0.6s
+  FKPP_seed7|M|OMP  J=0.20 0.4  FKPP_seed8|M|Lasso  J=0.21 3199.6s
+  FKPP_seed8|M|CCP  J=1.00 3.2s
+  FKPP_seed8|L|OMP  J=0.20 0.2s
+  FKPP_seed8|L|Lasso  J=0.15 3593.5s
+  FKPP_seed8|L|CCP  J=0.09 11.5s
+  FKPP_seed9|S|OMP  J=0.20 0.1s
+  FKPP_seed9|S|Lasso  J=0.25 3354.6s
+  FKPP_seed9|S|CCP  J=1.00 0.4s
+  FKPP_seed9|M|OMP  J=0.20 0.1s
+  FKPP_seed9|M|Lasso  J=0.11 1918.9s
+  FKPP_seed9|M|CCP  J=1.00 1.7s
+  FKPP_seed9|L|OMP  J=0.20 0.3s
+  FKPP_seed9|L|Lasso  J=0.11 3393.0s
+  FKPP_seed9|L|CCP  J=1.00 11.1s
+  FKPP_seed10|S|OMP  J=0.20 0.1s
+  FKPP_seed10|S|Lasso  J=0.30 2318.1s
+  FKPP_seed10|S|CCP  J=1.00 0.2s
+  FKPP_seed10|M|OMP  J=0.20 0.1s
+  FKPP_seed10|M|Lasso  J=0.14 186.0s
+  FKPP_seed10|M|CCP  J=1.00 1.5s
+  FKPP_seed10|L|OMP  J=0.20 0.2s
+  FKPP_seed10|L|Lasso  J=0.13 2110.2s
+  FKPP_seed10|L|CCP  J=0.08 1.6s
+  FKPP_seed11|S|OMP  J=0.00 0.0s
+  FKPP_seed11|S|Lasso  J=0.29 72.8s
+  FKPP_seed11|S|CCP  J=1.00 0.2s
+  FKPP_seed11|M|OMP  J=0.00 0.1s
+  FKPP_seed11|M|Lasso  J=0.12 60.4s
+  FKPP_seed11|M|CCP  J=1.00 0.8s
+  FKPP_seed11|L|OMP  J=0.00 0.1s
+  FKPP_seed11|L|Lasso  J=0.06 1640.4s
+  FKPP_seed11|L|CCP  J=0.08 1.8s
+  FKPP_seed12|S|OMP  J=0.20 0.0s
+  FKPP_seed12|S|Lasso  J=0.22 194.0s
+  FKPP_seed12|S|CCP  J=1.00 0.1s
+  FKPP_seed12|M|OMP  J=0.20 0.0s
+  FKPP_seed12|M|Lasso  J=0.17 943.0s
+  FKPP_seed12|M|CCP  J=1.00 0.6s
+  FKPP_seed12|L|OMP  J=0.20 0.1s
+  FKPP_seed12|L|Lasso  J=0.07 578.3s
+  FKPP_seed12|L|CCP  J=1.00 4.2s
+  FKPP_seed13|S|OMP  J=0.50 0.1s  FKPP_seed9|L|Lasso  J=0.11 1720.4s
+  FKPP_seed9|L|CCP  J=1.00 6.0s
+  FKPP_seed9|XL|OMP  J=0.20 0.2s
+  FKPP_seed9|XL|Lasso  J=0.09 3862.8s
+  FKPP_seed9|XL|CCP  J=0.18 11.1s
+  FKPP_seed10|S|OMP  J=0.20 0.0s
+  FKPP_seed10|S|Lasso  J=0.30 1150.4s
+  FKPP_seed10|S|CCP  J=1.00 0.2s
+  FKPP_seed10|M|OMP  J=0.20 0.1s
+  FKPP_seed10|M|Lasso  J=0.14 89.0s
+  FKPP_seed10|M|CCP  J=1.00 0.7s
+  FKPP_seed10|L|OMP  J=0.20 0.2s
+  FKPP_seed10|L|Lasso  J=0.13 1411.5s
+  FKPP_seed10|L|CCP  J=0.08 2.4s
+  FKPP_seed10|XL|OMP  J=0.20 0.1s
+  FKPP_seed10|XL|Lasso  J=0.09 2684.0s
+  FKPP_seed10|XL|CCP  J=0.09 6.7s
+  FKPP_seed11|S|OMP  J=0.00 0.0s
+  FKPP_seed11|S|Lasso  J=0.29 71.6s
+  FKPP_seed11|S|CCP  J=1.00 0.1s
+  FKPP_seed11|M|OMP  J=0.00 0.1s
+  FKPP_seed11|M|Lasso  J=0.12 60.3s
+  FKPP_seed11|M|CCP  J=1.00 1.2s
+  FKPP_seed11|L|OMP  J=0.00 0.2s
+  FKPP_seed11|L|Lasso  J=0.06 1573.7s
+  FKPP_seed11|L|CCP  J=0.08 0.9s
+  FKPP_seed11|XL|OMP  J=0.00 0.1s
+  FKPP_seed11|XL|Lasso  J=0.10 140.8s
+  FKPP_seed11|XL|CCP  J=0.20 9.1s
+  FKPP_seed12|S|OMP  J=0.20 0.0s
+  FKPP_seed12|S|Lasso  J=0.22 184.5s
+  FKPP_seed12|S|CCP  J=1.00 0.1s
+  FKPP_seed12|M|OMP  J=0.20 0.0s
+  FKPP_seed12|M|Lasso  J=0.17 784.1s
+  FKPP_seed12|M|CCP  J=1.00 0.3s
+  FKPP_seed12|L|OMP  J=0.20 0.1s
+  FKPP_seed12|L|Lasso  J=0.07 424.6s
+  FKPP_seed12|L|CCP  J=1.00 2.7s
+  FKPP_seed12|XL|OMP  J=0.20 0.1s
+  FKPP_seed12|XL|Lasso  J=0.07 575.2s
+  FKPP_seed12|XL|CCP  J=1.00 1.1s
+  FKPP_seed13|S|OMP  J=0.50 0.0s
+  FKPP_seed13|S|Lasso  J=0.25 7.3s
+  FKPP_seed13|S|CCP  J=1.00 0.1s
+  FKPP_seed13|M|OMP  J=0.50 0.0s
+  FKPP_seed13|M|Lasso  J=0.22 72.2s
+  FKPP_seed13|M|CCP  J=1.00 0.5s
+  FKPP_seed13|L|OMP  J=0.20 0.0s
+  FKPP_seed13|L|Lasso  J=0.11 471.1s
+  FKPP_seed13|L|CCP  J=0.20 0.2s
+  FKPP_seed13|XL|OMP  J=0.20 0.0s
+  FKPP_seed13|XL|Lasso  J=0.11 656.6s
+  FKPP_seed13|XL|CCP  J=0.20 1.2s
+  FKPP_seed14|S|OMP  J=0.00 0.0s
+  FKPP_seed14|S|Lasso  J=0.29 17.7s
+  FKPP_seed14|S|CCP  J=1.00 0.0s
+  FKPP_seed14|M|OMP  J=0.00 0.0s
+  FKPP_seed14|M|Lasso  J=0.00 20.4s
+  FKPP_seed14|M|CCP  J=1.00 0.3s
+  FKPP_seed14|L|OMP  J=0.00 0.0s
+  FKPP_seed14|L|Lasso  J=0.06 184.8s
+  FKPP_seed14|L|CCP  J=0.08 0.2s
+  FKPP_seed14|XL|OMP  J=0.00 0.0s
+  FKPP_seed14|XL|Lasso  J=0.05 344.7s
+  FKPP_seed14|XL|CCP  J=0.08 0.5s
+  FKPP_seed15|S|OMP  J=0.20 0.0s
+  FKPP_seed15|S|Lasso  J=0.29 19.9s
+  FKPP_seed15|S|CCP  J=1.00 0.0s
+  FKPP_seed15|M|OMP  J=0.20 0.0s
+  FKPP_seed15|M|Lasso  J=0.17 75.5s
+  FKPP_seed15|M|CCP  J=1.00 0.1s
+  FKPP_seed15|L|OMP  J=0.20 0.0s
+  FKPP_seed15|L|Lasso  J=0.08 79.2s
+  FKPP_seed15|L|CCP  J=1.00 0.4s
+  FKPP_seed15|XL|OMP  J=0.20 0.0s
+  FKPP_seed15|XL|Lasso  J=0.09 121.6s
+  FKPP_seed15|XL|CCP  J=0.10 1.2s
+  FKPP_seed16|S|OMP  J=0.20 0.0s
+  FKPP_seed16|S|Lasso  J=0.10 41.9s
+  FKPP_seed16|S|CCP  J=1.00 0.0s
+  FKPP_seed16|M|OMP  J=0.20 0.0s
+  FKPP_seed16|M|Lasso  J=0.14 304.0s
+  FKPP_seed16|M|CCP  J=1.00 0.1s
+  FKPP_seed16|L|OMP  J=0.20 0.0s
+  FKPP_seed16|L|Lasso  J=0.06 201.4s
+  FKPP_seed16|L|CCP  J=1.00 0.5s
+  FKPP_seed16|XL|OMP  J=0.20 0.0s
+  FKPP_seed16|XL|Lasso  J=0.06 262.4s
+  FKPP_seed16|XL|CCP  J=1.00 1.0s
+  FKPP_seed17|S|OMP  J=0.20 0.0s
+  FKPP_seed17|S|Lasso  J=0.38 223.0s
+  FKPP_seed17|S|CCP  J=1.00 0.1s
+  FKPP_seed17|M|OMP  J=0.20 0.0s
+  FKPP_seed17|M|Lasso  J=0.20 207.6s
+  FKPP_seed17|M|CCP  J=1.00 0.4s
+  FKPP_seed17|L|OMP  J=0.20 0.0s
+  FKPP_seed17|L|Lasso  J=0.11 322.0s
+  FKPP_seed17|L|CCP  J=0.20 0.5s
+  FKPP_seed17|XL|OMP  J=0.20 0.1s
+  FKPP_seed17|XL|Lasso  J=0.08 523.6s
+  FKPP_seed17|XL|CCP  J=0.08 0.9s
+  FKPP_seed18|S|OMP  J=0.20 0.0s
+  FKPP_seed18|S|Lasso  J=0.14 58.5s
+  FKPP_seed18|S|CCP  J=1.00 0.1s
+  FKPP_seed18|M|OMP  J=0.20 0.0s
+  FKPP_seed18|M|Lasso  J=0.13 328.9s
+  FKPP_seed18|M|CCP  J=1.00 0.2s
+  FKPP_seed18|L|OMP  J=0.20 0.1s
+  FKPP_seed18|L|Lasso  J=0.07 273.0s
+  FKPP_seed18|L|CCP  J=1.00 0.8s
+  FKPP_seed18|XL|OMP  J=0.20 0.1s
+  FKPP_seed18|XL|Lasso  J=0.06 493.4s
+  FKPP_seed18|XL|CCP  J=0.40 1.5s
+  FKPP_seed19|S|OMP  J=0.20 0.0s
+  FKPP_seed19|S|Lasso  J=0.12 6.9s
+  FKPP_seed19|S|CCP  J=1.00 0.0s
+  FKPP_seed19|M|OMP  J=0.20 0.0s
+  FKPP_seed19|M|Lasso  J=0.08 45.6s
+  FKPP_seed19|M|CCP  J=1.00 0.1s
+  FKPP_seed19|L|OMP  J=0.20 0.0s
+  FKPP_seed19|L|Lasso  J=0.10 765.5s
+  FKPP_seed19|L|CCP  J=1.00 1.0s
+  FKPP_seed19|XL|OMP  J=0.20 0.0s
+  FKPP_seed19|XL|Lasso  J=0.09 12.2s
+  FKPP_seed19|XL|CCP  J=0.09 0.1s
+
+============================================================
+  Task 3: Summary
+============================================================
+
+Results: /home/lowrank/Downloads/Identifiability_of_Nonlinear_Operators/opid/experiments/../benchmark_results/full.json
+Summary: /home/lowrank/Downloads/Identifiability_of_Nonlinear_Operators/opid/experiments/../benchmark_results/full_summary.json
+
+AC:
+  L:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 16/20 (80%) fail=0
+  XL:
+    CCP         : 18/20 (90%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 16/20 (80%) fail=0
+
+Burgers:
+  S:
+    CCP         : 18/20 (90%) fail=2
+    L0_CBC      : 14/16 (88%) fail=2
+    L0_SCIP     : 14/16 (88%) fail=2
+    Lasso       : 18/20 (90%) fail=2
+    OMP         : 18/20 (90%) fail=2
+  M:
+    CCP         : 18/20 (90%) fail=2
+    L0_CBC      : 14/16 (88%) fail=2
+    L0_SCIP     : 14/16 (88%) fail=2
+    Lasso       : 18/20 (90%) fail=2
+    OMP         : 18/20 (90%) fail=2
+  L:
+    CCP         : 8/20 (40%) fail=2
+    L0_CBC      : 14/16 (88%) fail=2
+    L0_SCIP     : 14/16 (88%) fail=2
+    Lasso       : 17/20 (85%) fail=2
+    OMP         : 16/20 (80%) fail=2
+  XL:
+    CCP         : 6/20 (30%) fail=2
+    L0_CBC      : 13/15 (87%) fail=2
+    L0_SCIP     : 14/16 (88%) fail=2
+    Lasso       : 17/20 (85%) fail=2
+    OMP         : 16/20 (80%) fail=2
+
+FKPP:
+  S:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  M:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  L:
+    CCP         : 13/20 (65%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  XL:
+    CCP         : 3/20 (15%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+
+KS:
+  M:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  L:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  XL:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+
+KdV:
+  S:
+    CCP         : 2/20 (10%) fail=18
+    CCP-milp    : 0/2 (0%) fail=2
+    L0_CBC      : 2/20 (10%) fail=18
+    L0_SCIP     : 1/20 (5%) fail=18
+    L0_scipy    : 0/2 (0%) fail=2
+    Lasso       : 2/20 (10%) fail=18
+    OMP         : 1/20 (5%) fail=18
+  M:
+    CCP         : 1/20 (5%) fail=18
+    CCP-milp    : 0/2 (0%) fail=2
+    L0_CBC      : 1/20 (5%) fail=19
+    L0_SCIP     : 1/20 (5%) fail=19
+    L0_scipy    : 0/1 (0%) fail=1
+    Lasso       : 2/20 (10%) fail=18
+    OMP         : 1/20 (5%) fail=18
+  L:
+    CCP         : 1/20 (5%) fail=19
+    CCP-milp    : 0/1 (0%) fail=1
+    L0_CBC      : 0/20 (0%) fail=19
+    L0_SCIP     : 1/20 (5%) fail=19
+    L0_scipy    : 0/1 (0%) fail=1
+    Lasso       : 1/20 (5%) fail=19
+    OMP         : 1/20 (5%) fail=19
+  XL:
+    CCP         : 0/20 (0%) fail=19
+    CCP-milp    : 0/1 (0%) fail=1
+    L0_CBC      : 1/20 (5%) fail=19
+    L0_SCIP     : 0/20 (0%) fail=19
+    L0_scipy    : 0/1 (0%) fail=1
+    Lasso       : 1/20 (5%) fail=19
+    OMP         : 1/20 (5%) fail=19
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         FKPP_seed3|XL|Lasso  J=0.13 1313.8s
+  FKPP_seed3|XL|CCP  J=0.25 10.6s
+  FKPP_seed4|S|OMP  J=0.20 0.1s
+  FKPP_seed4|S|Lasso  J=0.38 1507.4s
+  FKPP_seed4|S|CCP  J=1.00 0.3s
+  FKPP_seed4|M|OMP  J=0.20 0.2s
+  FKPP_seed4|M|Lasso  J=0.12 159.0s
+  FKPP_seed4|M|CCP  J=1.00 2.5s
+  FKPP_seed4|L|OMP  J=0.20 0.4s
+  FKPP_seed4|L|Lasso  J=0.17 1286.7s
+  FKPP_seed4|L|CCP  J=1.00 18.7s
+  FKPP_seed4|XL|OMP  J=0.20 0.9s
+  FKPP_seed4|XL|Lasso  J=0.17 2929.6s
+  FKPP_seed4|XL|CCP  J=0.25 38.9s
+  FKPP_seed5|S|OMP  J=0.20 0.1s
+  FKPP_seed5|S|Lasso  J=0.33 1785.9s
+  FKPP_seed5|S|CCP  J=1.00 0.9s
+  FKPP_seed5|M|OMP  J=0.20 0.3s
+  FKPP_seed5|M|Lasso  J=0.27 3072.6s
+  FKPP_seed5|M|CCP  J=1.00 4.1s
+  FKPP_seed5|L|OMP  J=0.20 0.4s
+  FKPP_seed5|L|Lasso  J=0.15 1817.8s
+  FKPP_seed5|L|CCP  J=1.00 18.8s
+  FKPP_seed5|XL|OMP  J=0.20 0.2s
+  FKPP_seed5|XL|Lasso  J=0.13 2599.5s
+  FKPP_seed5|XL|CCP  J=1.00 37.6s
+  FKPP_seed6|S|OMP  J=0.20 0.1s
+  FKPP_seed6|S|Lasso  J=0.43 1495.8s
+  FKPP_seed6|S|CCP  J=1.00 0.7s
+  FKPP_seed6|M|OMP  J=0.20 0.6s
+  FKPP_seed6|M|Lasso  J=0.27 4397.6s
+  FKPP_seed6|M|CCP  J=1.00 1.9s
+  FKPP_seed6|L|OMP  J=0.20 0.3s
+  FKPP_seed6|L|Lasso  J=0.14 3192.0s
+  FKPP_seed6|L|CCP  J=1.00 10.4s
+  FKPP_seed6|XL|OMP  J=0.20 0.7s
+  FKPP_seed6|XL|Lasso  J=0.12 3409.6s
+  FKPP_seed6|XL|CCP  J=0.40 20.0s
+  FKPP_seed7|S|OMP  J=0.50 0.1s
+  FKPP_seed7|S|Lasso  J=0.22 348.3s
+  FKPP_seed7|S|CCP  J=1.00 0.6s
+  FKPP_seed7|M|OMP  J=0.20 0.3s
+  FKPP_seed7|M|Lasso  J=0.17 1703.1s
+  FKPP_seed7|M|CCP  J=1.00 1.8s
+  FKPP_seed7|L|OMP  J=0.20 0.3s
+  FKPP_seed7|L|Lasso  J=0.07 2619.8s
+  FKPP_seed7|L|CCP  J=0.08 1.1s
+  FKPP_seed7|XL|OMP  J=0.20 0.1s
+  FKPP_seed7|XL|Lasso  J=0.08 3142.1s
+  FKPP_seed7|XL|CCP  J=1.00 32.1s
+  FKPP_seed8|S|OMP  J=0.20 0.1s
+  FKPP_seed8|S|Lasso  J=0.25 116.7s
+  FKPP_seed8|S|CCP  J=1.00 0.4s
+  FKPP_seed8|M|OMP  J=0.20 0.1s
+  FKPP_seed8|M|Lasso  J=0.20 471.2s
+  FKPP_seed8|M|CCP  J=1.00 0.9s
+  FKPP_seed8|L|OMP  J=0.20 0.1s
+  FKPP_seed8|L|Lasso  J=0.08 474.7s
+  FKPP_seed8|L|CCP  J=1.00 10.6s
+  FKPP_seed8|XL|OMP  J=0.20 0.4s
+  FKPP_seed8|XL|Lasso  J=0.07 829.5s
+  FKPP_seed8|XL|CCP  J=0.09 10.3s
+  FKPP_seed9|S|OMP  J=0.20 0.0s
+  FKPP_seed9|S|Lasso  J=0.25 3355.2s
+  FKPP_seed9|S|CCP  J=1.00 0.2s
+  FKPP_seed9|M|OMP  J=0.20 0.1s
+  FKPP_seed9|M|Lasso  J=0.11 1795.0s
+  FKPP_seed9|M|CCP  J=1.00 0.6s
+  FKPP_seed9|L|OMP  J=0.20 0.1s
+  FKPP_seed9|L|Lasso  J=0.11 1716.9s
+  FKPP_seed9|L|CCP  J=1.00 5.3s
+  FKPP_seed9|XL|OMP  J=0.20 0.2s
+  FKPP_seed9|XL|Lasso  J=0.09 3989.7s
+  FKPP_seed9|XL|CCP  J=0.18 13.4s
+  FKPP_seed10|S|OMP  J=0.20 0.1s
+  FKPP_seed10|S|Lasso  J=0.30 1177.5s
+  FKPP_seed10|S|CCP  J=1.00 0.1s
+  FKPP_seed10|M|OMP  J=0.20 0.1s
+  FKPP_seed10|M|Lasso  J=0.14 92.4s
+  FKPP_seed10|M|CCP  J=1.00 0.7s
+  FKPP_seed10|L|OMP  J=0.20 0.1s
+  FKPP_seed10|L|Lasso  J=0.13 1419.7s
+  FKPP_seed10|L|CCP  J=0.08 1.8s
+  FKPP_seed10|XL|OMP  J=0.20 0.1s
+  FKPP_seed10|XL|Lasso  J=0.09 2660.7s
+  FKPP_seed10|XL|CCP  J=0.09 6.4s
+  FKPP_seed11|S|OMP  J=0.00 0.0s
+  FKPP_seed11|S|Lasso  J=0.29 73.6s
+  FKPP_seed11|S|CCP  J=1.00 0.1s
+  FKPP_seed11|M|OMP  J=0.00 0.1s
+  FKPP_seed11|M|Lasso  J=0.12 58.9s
+  FKPP_seed11|M|CCP  J=1.00 0.4s
+  FKPP_seed11|L|OMP  J=0.00 0.1s
+  FKPP_seed11|L|Lasso  J=0.06 1555.9s
+  FKPP_seed11|L|CCP  J=0.08 0.8s
+  FKPP_seed11|XL|OMP  J=0.00 0.1s
+  FKPP_seed11|XL|Lasso  J=0.10 140.6s
+  FKPP_seed11|XL|CCP  J=0.20 10.5s
+  FKPP_seed12|S|OMP  J=0.20 0.1s
+  FKPP_seed12|S|Lasso  J=0.22 186.2s
+  FKPP_seed12|S|CCP  J=1.00 0.1s
+  FKPP_seed12|M|OMP  J=0.20 0.0s
+  FKPP_seed12|M|Lasso  J=0.17 912.2s
+  FKPP_seed12|M|CCP  J=1.00 0.5s
+  FKPP_seed12|L|OMP  J=0.20 0.1s
+  FKPP_seed12|L|Lasso  J=0.07 558.0s
+  FKPP_seed12|L|CCP  J=1.00 3.5s
+  FKPP_seed12|XL|OMP  J=0.20 0.1s
+  FKPP_seed12|XL|Lasso  J=0.07 841.1s
+  FKPP_seed12|XL|CCP  J=1.00 12.2s
+  FKPP_seed13|S|OMP  J=0.50 0.0s
+  FKPP_seed13|S|Lasso  J=0.25 22.6s
+  FKPP_seed13|S|CCP  J=1.00 0.1s
+  FKPP_seed13|M|OMP  J=0.50 0.1s
+  FKPP_seed13|M|Lasso  J=0.22 233.7s
+  FKPP_seed13|M|CCP  J=1.00 0.8s
+  FKPP_seed13|L|OMP  J=0.20 0.1s
+  FKPP_seed13|L|Lasso  J=0.11 1651.6s
+  FKPP_seed13|L|CCP  J=0.20 1.4s
+  FKPP_seed13|XL|OMP  J=0.20 0.1s
+  FKPP_seed13|XL|Lasso  J=0.11 879.9s
+  FKPP_seed13|XL|CCP  J=0.20 1.8s
+  FKPP_seed14|S|OMP  J=0.00 0.0s
+  FKPP_seed14|S|Lasso  J=0.29 21.8s
+  FKPP_seed14|S|CCP  J=1.00 0.0s
+  FKPP_seed14|M|OMP  J=0.00 0.0s
+  FKPP_seed14|M|Lasso  J=0.00 32.4s
+  FKPP_seed14|M|CCP  J=1.00 0.1s
+  FKPP_seed14|L|OMP  J=0.00 0.0s
+  FKPP_seed14|L|Lasso  J=0.06 211.3s
+  FKPP_seed14|L|CCP  J=0.08 0.4s
+  FKPP_seed14|XL|OMP  J=0.00 0.0s
+  FKPP_seed14|XL|Lasso  J=0.05 346.8s
+  FKPP_seed14|XL|CCP  J=0.08 1.1s
+  FKPP_seed15|S|OMP  J=0.20 0.0s
+  FKPP_seed15|S|Lasso  J=0.29 22.9s
+  FKPP_seed15|S|CCP  J=1.00 0.0s
+  FKPP_seed15|M|OMP  J=0.20 0.0s
+  FKPP_seed15|M|Lasso  J=0.17 79.8s
+  FKPP_seed15|M|CCP  J=1.00 0.1s
+  FKPP_seed15|L|OMP  J=0.20 0.0s
+  FKPP_seed15|L|Lasso  J=0.08 47.7s
+  FKPP_seed15|L|CCP  J=1.00 0.7s
+  FKPP_seed15|XL|OMP  J=0.20 0.1s
+  FKPP_seed15|XL|Lasso  J=0.09 122.2s
+  FKPP_seed15|XL|CCP  J=0.10 0.9s
+  FKPP_seed16|S|OMP  J=0.20 0.0s
+  FKPP_seed16|S|Lasso  J=0.10 36.0s
+  FKPP_seed16|S|CCP  J=1.00 0.0s
+  FKPP_seed16|M|OMP  J=0.20 0.0s
+  FKPP_seed16|M|Lasso  J=0.14 254.8s
+  FKPP_seed16|M|CCP  J=1.00 0.2s
+  FKPP_seed16|L|OMP  J=0.20 0.0s
+  FKPP_seed16|L|Lasso  J=0.06 164.6s
+  FKPP_seed16|L|CCP  J=1.00 0.8s
+  FKPP_seed16|XL|OMP  J=0.20 0.1s
+  FKPP_seed16|XL|Lasso  J=0.06 301.2s
+  FKPP_seed16|XL|CCP  J=1.00 1.0s
+  FKPP_seed17|S|OMP  J=0.20 0.0s
+  FKPP_seed17|S|Lasso  J=0.38 215.6s
+  FKPP_seed17|S|CCP  J=1.00 0.1s
+  FKPP_seed17|M|OMP  J=0.20 0.0s
+  FKPP_seed17|M|Lasso  J=0.20 204.3s
+  FKPP_seed17|M|CCP  J=1.00 0.3s
+  FKPP_seed17|L|OMP  J=0.20 0.0s
+  FKPP_seed17|L|Lasso  J=0.11 223.8s
+  FKPP_seed17|L|CCP  J=0.20 1.2s
+  FKPP_seed17|XL|OMP  J=0.20 0.0s
+  FKPP_seed17|XL|Lasso  J=0.08 507.2s
+  FKPP_seed17|XL|CCP  J=0.08 1.1s
+  FKPP_seed18|S|OMP  J=0.20 0.0s
+  FKPP_seed18|S|Lasso  J=0.14 55.7s
+  FKPP_seed18|S|CCP  J=1.00 0.0s
+  FKPP_seed18|M|OMP  J=0.20 0.0s
+  FKPP_seed18|M|Lasso  J=0.13 339.3s
+  FKPP_seed18|M|CCP  J=1.00 0.2s
+  FKPP_seed18|L|OMP  J=0.20 0.0s
+  FKPP_seed18|L|Lasso  J=0.07 228.3s
+  FKPP_seed18|L|CCP  J=1.00 0.8s
+  FKPP_seed18|XL|OMP  J=0.20 0.1s
+  FKPP_seed18|XL|Lasso  J=0.06 609.4s
+  FKPP_seed18|XL|CCP  J=0.40 1.2s
+  FKPP_seed19|S|OMP  J=0.20 0.0s
+  FKPP_seed19|S|Lasso  J=0.12 5.0s
+  FKPP_seed19|S|CCP  J=1.00 0.0s
+  FKPP_seed19|M|OMP  J=0.20 0.0s
+  FKPP_seed19|M|Lasso  J=0.08 38.4s
+  FKPP_seed19|M|CCP  J=1.00 0.3s
+  FKPP_seed19|L|OMP  J=0.20 0.0s
+  FKPP_seed19|L|Lasso  J=0.10 640.9s
+  FKPP_seed19|L|CCP  J=1.00 0.5s
+  FKPP_seed19|XL|OMP  J=0.20 0.1s
+  FKPP_seed19|XL|Lasso  J=0.09 969.9s
+  FKPP_seed19|XL|CCP  J=0.09 0.3s
+
+============================================================
+  Task 3: Summary
+============================================================
+
+Results: /home/lowrank/Downloads/Identifiability_of_Nonlinear_Operators/opid/experiments/../benchmark_results/full.json
+Summary: /home/lowrank/Downloads/Identifiability_of_Nonlinear_Operators/opid/experiments/../benchmark_results/full_summary.json
+
+AC:
+  L:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 16/20 (80%) fail=0
+  XL:
+    CCP         : 18/20 (90%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 16/20 (80%) fail=0
+
+Burgers:
+  S:
+    CCP         : 18/20 (90%) fail=2
+    L0_CBC      : 14/16 (88%) fail=2
+    L0_SCIP     : 14/16 (88%) fail=2
+    Lasso       : 18/20 (90%) fail=2
+    OMP         : 18/20 (90%) fail=2
+  M:
+    CCP         : 18/20 (90%) fail=2
+    L0_CBC      : 14/16 (88%) fail=2
+    L0_SCIP     : 14/16 (88%) fail=2
+    Lasso       : 18/20 (90%) fail=2
+    OMP         : 18/20 (90%) fail=2
+  L:
+    CCP         : 8/20 (40%) fail=2
+    L0_CBC      : 14/16 (88%) fail=2
+    L0_SCIP     : 14/16 (88%) fail=2
+    Lasso       : 17/20 (85%) fail=2
+    OMP         : 16/20 (80%) fail=2
+  XL:
+    CCP         : 6/20 (30%) fail=2
+    L0_CBC      : 13/15 (87%) fail=2
+    L0_SCIP     : 14/16 (88%) fail=2
+    Lasso       : 17/20 (85%) fail=2
+    OMP         : 16/20 (80%) fail=2
+
+FKPP:
+  S:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  M:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  L:
+    CCP         : 13/20 (65%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  XL:
+    CCP         : 4/20 (20%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+
+KS:
+  M:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  L:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+  XL:
+    CCP         : 20/20 (100%) fail=0
+    Lasso       : 0/20 (0%) fail=0
+    OMP         : 0/20 (0%) fail=0
+
+KdV:
+  S:
+    CCP         : 2/20 (10%) fail=18
+    CCP-milp    : 0/2 (0%) fail=2
+    L0_CBC      : 2/20 (10%) fail=18
+    L0_SCIP     : 1/20 (5%) fail=18
+    L0_scipy    : 0/2 (0%) fail=2
+    Lasso       : 2/20 (10%) fail=18
+    OMP         : 1/20 (5%) fail=18
+  M:
+    CCP         : 1/20 (5%) fail=18
+    CCP-milp    : 0/2 (0%) fail=2
+    L0_CBC      : 1/20 (5%) fail=19
+    L0_SCIP     : 1/20 (5%) fail=19
+    L0_scipy    : 0/1 (0%) fail=1
+    Lasso       : 2/20 (10%) fail=18
+    OMP         : 1/20 (5%) fail=18
+  L:
+    CCP         : 1/20 (5%) fail=19
+    CCP-milp    : 0/1 (0%) fail=1
+    L0_CBC      : 0/20 (0%) fail=19
+    L0_SCIP     : 1/20 (5%) fail=19
+    L0_scipy    : 0/1 (0%) fail=1
+    Lasso       : 1/20 (5%) fail=19
+    OMP         : 1/20 (5%) fail=19
+  XL:
+    CCP         : 0/20 (0%) fail=19
+    CCP-milp    : 0/1 (0%) fail=1
+    L0_CBC      : 1/20 (5%) fail=19
+    L0_SCIP     : 0/20 (0%) fail=19
+    L0_scipy    : 0/1 (0%) fail=1
+    Lasso       : 1/20 (5%) fail=19
+    OMP         : 1/20 (5%) fail=19
