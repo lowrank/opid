@@ -8,7 +8,7 @@ from scipy.linalg import eigh
 
 from .base import BaseRecovery, RecoveryResult
 from ._utils import _column_normalise
-from .subsample import Subsampler, RandomSubsampler, FullSubsampler, QRSubsampler, SignalQRSubsampler
+from .subsample import Subsampler, SignalQRSubsampler
 
 
 class CCPRecovery(BaseRecovery):
@@ -27,20 +27,26 @@ class CCPRecovery(BaseRecovery):
 
     def _fit(self, Theta, y, names):
         P = Theta.shape[1]
-        n = len(y)
 
+        # Column norms (precomputed once)
         col_norms = np.linalg.norm(Theta, axis=0)
         col_norms[col_norms < 1e-14] = 1.0
         Tn = Theta / col_norms
 
+        # Row subsampling
+        s = self.subsampler or SignalQRSubsampler()
+        ridx = s.select(Tn, self.max_samples)
+        Tn_sub = Tn[ridx]
+        ys = y[ridx]
+        ns = len(ridx)
+
+        # Subsampled Theta (precomputed once for OLS voting)
+        Th_sub = Theta[ridx]
+
         active = np.arange(P)
         cs = self.cluster_size
-        max_rounds = 10
+        max_rounds = 8
         prev_n = P + 1
-
-        # Row subsampling (default: signal-aware QR — filter tail, then max-volume)
-        s = self.subsampler or SignalQRSubsampler()
-        ridx = s.select(Tn[:, active], self.max_samples)
 
         for rnd in range(max_rounds):
             current_n = len(active)
@@ -48,17 +54,16 @@ class CCPRecovery(BaseRecovery):
                 break
             prev_n = current_n
 
-            Tn_sub = Tn[ridx]
-            ys = y[ridx]
-            ns = len(ridx)
+            act = active  # alias
 
-            C = np.abs((Tn_sub[:, active].T @ Tn_sub[:, active]) / ns)
+            # Correlation on active set (subsampled, normalized)
+            C = np.abs((Tn_sub[:, act].T @ Tn_sub[:, act]) / ns)
             np.fill_diagonal(C, 0)
             C = np.nan_to_num(C, nan=0.0, posinf=0.0, neginf=0.0)
 
+            # Fiedler clustering
             L = _splap(C, normed=False)
             L = np.nan_to_num(L, nan=0.0, posinf=0.0, neginf=0.0)
-            idx = np.arange(current_n)
 
             def _recurse(inds):
                 if len(inds) <= cs:
@@ -75,45 +80,45 @@ class CCPRecovery(BaseRecovery):
                 mid = len(sp) // 2
                 return _recurse(inds[sp[:mid]]) + _recurse(inds[sp[mid:]])
 
-            groups = [g.tolist() for g in _recurse(idx)]
+            groups = [g.tolist() for g in _recurse(np.arange(current_n))]
             ng = len(groups)
 
-            # ── cross-group OLS voting ─────────────────────────────────
+            # Cross-group OLS voting
             votes = {gidx: 0 for gidx in range(current_n)}
+            # Precompute column norms for the active set
+            cn_act = col_norms[act]
             for i in range(ng):
                 for j in range(i + 1, ng):
                     cols = np.concatenate([groups[i], groups[j]])
-                    Tsub = Theta[:, active[cols]]
-                    cn = np.linalg.norm(Tsub, axis=0, keepdims=True)
-                    cn[cn < 1e-14] = 1.0
+                    cn_pair = cn_act[cols]
+                    cn_pair[cn_pair < 1e-14] = 1.0
                     try:
-                        xi, _, _, _ = np.linalg.lstsq(Tsub[ridx] / cn, ys, rcond=None)
-                    except np.linalg.LinAlgError: continue
+                        xi, _, _, _ = np.linalg.lstsq(Th_sub[:, act[cols]] / cn_pair, ys, rcond=None)
+                    except np.linalg.LinAlgError:
+                        continue
                     thresh = max(float(np.max(np.abs(xi))) * 1e-3, 1e-10)
-                    for k, col in enumerate(cols):
-                        if abs(float(xi[k])) > thresh:
-                            votes[col] += 1
+                    v = abs(xi) > thresh
+                    for k in np.where(v)[0]:
+                        votes[cols[k]] += 1
 
-            # ── survivors ──────────────────────────────────────────────
+            # Survivors: lenient threshold (ng//2), tighten only if nothing pruned
             min_votes = max(1, ng // 2)
-            survivors = [gidx for gidx, v in votes.items() if v >= min_votes]
-            if len(survivors) == current_n and ng > 1:
+            surv = [gidx for gidx, v in votes.items() if v >= min_votes]
+            if len(surv) == current_n and ng > 1:
                 min_votes = max(1, ng - 1)
-                survivors = [gidx for gidx, v in votes.items() if v >= min_votes]
+                surv = [gidx for gidx, v in votes.items() if v >= min_votes]
 
             if self.verbose:
                 print(f"  [curs] r{rnd} n={current_n} {ng} groups "
-                      f"sizes={[len(g) for g in groups]} min_votes={min_votes}")
+                      f"min_votes={min_votes} → {len(surv)}")
 
-            active = active[survivors]
-            if self.verbose:
-                print(f"    survivors: {len(active)}")
+            active = act[np.asarray(surv)]
 
-        if self.verbose:
-            print(f"  [curs] final candidates: {len(active)} "
+        if self.verbose and len(active) > 0:
+            print(f"  [curs] final: {len(active)} candidates "
                   f"{[names[i] for i in sorted(active)]}")
 
-        # ── final OMP + OLS debiasing ──────────────────────────────────
+        # ── final OMP + OLS debiasing (full data) ───────────────────────
         if len(active) == 0:
             rec_cols = np.arange(P).tolist()
         else:
@@ -122,7 +127,7 @@ class CCPRecovery(BaseRecovery):
         coef = np.zeros(P)
         if len(rec_cols) > 6:
             from sklearn.linear_model import OrthogonalMatchingPursuit
-            Tn_full = _column_normalise(Theta[:, rec_cols])[0]
+            Tn_full, _ = _column_normalise(Theta[:, rec_cols])
             omp = OrthogonalMatchingPursuit(n_nonzero_coefs=min(len(rec_cols), 6))
             omp.fit(Tn_full, y)
             rec_cols = [rec_cols[i] for i, c in enumerate(omp.coef_) if abs(c) > 1e-6]
