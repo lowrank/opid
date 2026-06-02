@@ -7,21 +7,29 @@ from sklearn.linear_model import Lasso
 
 from .base import BaseRecovery, RecoveryResult
 from ._utils import _column_normalise
+from .subsample import Subsampler, SignalQRSubsampler
 
 
 class LassoRecovery(BaseRecovery):
     """L1-regularised least squares — convex, globally optimal, shrinkage bias."""
 
-    def __init__(self, alpha=0.1, verbose=False, **kwargs):
+    def __init__(self, alpha=0.1, subsampler=None, max_samples=4000,
+                 verbose=False, **kwargs):
         super().__init__(**kwargs)
         self.alpha = alpha
+        self.subsampler = subsampler
+        self.max_samples = max_samples
         self.verbose = verbose
 
     def _fit(self, Theta, y, names):
         Theta_n, col_norms = _column_normalise(Theta)
 
+        s = self.subsampler or SignalQRSubsampler()
+        ridx = s.select(Theta_n, self.max_samples)
+        Th_s, ys = Theta_n[ridx], y[ridx]
+
         lasso_cv = Lasso(alpha=self.alpha, max_iter=5000, tol=1e-4, fit_intercept=False)
-        lasso_cv.fit(Theta_n, y)
+        lasso_cv.fit(Th_s, ys)
         coef_n = lasso_cv.coef_
 
         max_abs = float(np.max(np.abs(coef_n)))
