@@ -89,6 +89,9 @@ class OperatorIdentifier:
         self.milp_solver = milp_solver
         self.cluster_size = cluster_size
         self.adaptive_groups_lambda = adaptive_groups_lambda
+        if subsampler is None:
+            from .subsample import RandomSubsampler
+            subsampler = RandomSubsampler(seed=random_state)
         self.subsampler = subsampler
         self.feature_names = feature_names
         self.random_state = random_state

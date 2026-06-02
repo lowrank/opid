@@ -48,11 +48,7 @@ class L0ParetoRecovery(BaseRecovery):
 
         n = len(y)
         m = min(self.max_samples, n)
-        s = self.subsampler
-        if s is not None:
-            idx = s.select(Theta, m)
-        else:
-            idx = np.arange(m)
+        idx = self.subsampler.select(Theta, m)
         Ts = Theta[idx]
         ys = y[idx]
 
