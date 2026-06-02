@@ -34,13 +34,13 @@ class CCPRecovery(BaseRecovery):
         max_rounds = 10
         prev_n = P + 1
 
-        # Row weights for subsampling: rows with higher signal are more
-        # informative for both correlation and OLS voting.  Without this,
-        # dissipative solutions inflate correlations in the decay tail.
-        row_norms = np.linalg.norm(Theta, axis=1)
-        s = row_norms.sum()
-        row_weights = row_norms / s if s > 1e-14 else None
+        # Volume-maximizing row subsampling via pivoted QR on Tn^T.
+        # The first m_sub pivot columns of Tn^T are the most linearly
+        # independent rows of Tn — maximizes information content.
         m_sub = min(4000, n)
+        from scipy.linalg import qr
+        _, _, ridx = qr(Tn[:, active].T, pivoting=True, mode='economic')
+        ridx = np.asarray(ridx[:m_sub], dtype=int)
 
         for rnd in range(max_rounds):
             current_n = len(active)
@@ -48,8 +48,6 @@ class CCPRecovery(BaseRecovery):
                 break
             prev_n = current_n
 
-            # Subsample rows for this round
-            ridx = np.random.default_rng(42 + rnd).choice(n, m_sub, replace=False, p=row_weights)
             Tn_sub = Tn[ridx]
             ys = y[ridx]
             ns = m_sub
