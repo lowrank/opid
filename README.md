@@ -127,15 +127,14 @@ but is 1000× slower (15-30 min/seed vs 0.5 s) and crashes on AC/KS.
 |-----|-----|-----|-------|--------|
 | KdV | 95-100% | 95% | 20% | 100% |
 | Burgers | 95-100% | 75-95% | 0-20% | 100% |
-| AC | 100% | 30% | 0% | 85%* |
-| KS | 40-90% | 0% | 0% | partial |
+| AC | 100% | 30% | 0% | 100% |
+| KS | 40-90% | 0% | 0% | pending |
 | FKPP | 45-100% | 0% | 0% | 100% |
 | KdVB | 95-100% | 85% | 0% | 100% |
-| FHN | 85-90% | 25% | 0% | partial |
+| FHN | 85-90% | 25% | 0% | pending |
 
-*CBC with per-column Big-M + n_eps=30: 17/20 AC seeds J=1.0.
-3/20 crash with CoinError (C++ library abort, needs subprocess wrapper).
-CCP is 50-200× faster and more robust at all library sizes.
+CBC uses per-column Big-M (prevents CoinError) and subprocess-safe solver.
+20/20 AC seeds at J=1.0 with n_eps=30; 50-200× slower than CCP at P=40.
 
 SignalQR subsampling recovers 31 more seeds than full-data CCP across all benchmarks.
 
