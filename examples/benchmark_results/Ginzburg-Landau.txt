@@ -1,4 +1,0 @@
-# Ginzburg-Landau  True support: ['u', 'u^3', 'u_xx']  2026-05-10 22:14:06
-P=12 S  SKIP (true terms missing from library)
-P=23 M  SKIP (true terms missing from library)
-Ginzburg-Landau	L	40	1.00	0.0	0.50	0.6	1.00	0.3	1.00	282.4	1.00	3257.6	0.07	0.5
