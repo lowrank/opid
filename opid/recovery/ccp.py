@@ -34,13 +34,27 @@ class CCPRecovery(BaseRecovery):
         max_rounds = 10
         prev_n = P + 1
 
+        # Row weights for subsampling: rows with higher signal are more
+        # informative for both correlation and OLS voting.  Without this,
+        # dissipative solutions inflate correlations in the decay tail.
+        row_norms = np.linalg.norm(Theta, axis=1)
+        s = row_norms.sum()
+        row_weights = row_norms / s if s > 1e-14 else None
+        m_sub = min(4000, n)
+
         for rnd in range(max_rounds):
             current_n = len(active)
             if current_n <= cs or current_n == prev_n:
                 break
             prev_n = current_n
 
-            C = np.abs((Tn[:, active].T @ Tn[:, active]) / n)
+            # Subsample rows for this round
+            ridx = np.random.default_rng(42 + rnd).choice(n, m_sub, replace=False, p=row_weights)
+            Tn_sub = Tn[ridx]
+            ys = y[ridx]
+            ns = m_sub
+
+            C = np.abs((Tn_sub[:, active].T @ Tn_sub[:, active]) / ns)
             np.fill_diagonal(C, 0)
             C = np.nan_to_num(C, nan=0.0, posinf=0.0, neginf=0.0)
 
@@ -75,7 +89,7 @@ class CCPRecovery(BaseRecovery):
                     cn = np.linalg.norm(Tsub, axis=0, keepdims=True)
                     cn[cn < 1e-14] = 1.0
                     try:
-                        xi, _, _, _ = np.linalg.lstsq(Tsub / cn, y, rcond=None)
+                        xi, _, _, _ = np.linalg.lstsq(Tsub[ridx] / cn, ys, rcond=None)
                     except np.linalg.LinAlgError: continue
                     thresh = max(float(np.max(np.abs(xi))) * 1e-3, 1e-10)
                     for k, col in enumerate(cols):
