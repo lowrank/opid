@@ -66,6 +66,17 @@ class L0ParetoRecovery(BaseRecovery):
 
         y_scale_full = float(np.linalg.norm(y, 1))
         noise_floor = y_scale_full * 0.1
+        # Floor for adaptive tightening: no model can fit tighter than the
+        # OLS residual on the full data.  Below this, MILP solvers return
+        # garbage rather than declaring infeasibility.
+        full_cn = np.linalg.norm(Theta, axis=0, keepdims=True)
+        full_cn[full_cn < 1e-14] = 1.0
+        try:
+            xi_full, _, _, _ = np.linalg.lstsq(Theta / full_cn, y, rcond=None)
+            ols_full_resid = float(np.linalg.norm(y - (Theta / full_cn) @ xi_full, 1))
+        except np.linalg.LinAlgError:
+            ols_full_resid = float(np.linalg.norm(y, 1)) * 0.01
+        min_eps_tight = max(ols_full_resid * 0.5, 1e-6)
 
         P = Ts_norm.shape[1]
         # Per-column Big-M: each term gets its own bound based on its OLS coefficient.
@@ -153,6 +164,8 @@ class L0ParetoRecovery(BaseRecovery):
             stable_count = 0
             while stable_count < 3:
                 eps_tight /= 2.0
+                if eps_tight < min_eps_tight: break
+                # ... subprocess call ...
                 with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
                     json.dump({"eps": float(eps_tight), "solver": "CBC", **{k: v for k, v in pad_data.items() if k in ("Theta", "y", "M")}}, tmp)
                     tight_file = tmp.name
@@ -298,6 +311,7 @@ class L0ParetoRecovery(BaseRecovery):
         stable_count = 0
         while stable_count < 3:
             eps_tight /= 2.0
+            if eps_tight < min_eps_tight: break
             sm_new, _ = _solve(eps_tight)
             if sm_new is None:
                 break
