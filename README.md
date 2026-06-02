@@ -125,16 +125,16 @@ but is 1000× slower (15-30 min/seed vs 0.5 s) and crashes on AC/KS.
 
 | PDE | CCP | OMP | Lasso | L0 SCIP |
 |-----|-----|-----|-------|---------|
-| KdV | 95-100% | 95% | 20% | 100%* |
-| Burgers | 95-100% | 75-95% | 0-20% | 100%* |
-| AC | 100% | 30% | 0% | crash* |
-| KS | 40-90% | 0% | 0% | crash* |
-| FKPP | 45-100% | 0% | 0% | 100%* |
-| KdVB | 95-100% | 85% | 0% | 100%* |
-| FHN | 85-90% | 25% | 0% | 100%* |
+| KdV | 95-100% | 95% | 20% | 100% |
+| Burgers | 95-100% | 75-95% | 0-20% | 100% |
+| AC | 100% | 30% | 0% | 100%* |
+| KS | 40-90% | 0% | 0% | 100%* |
+| FKPP | 45-100% | 0% | 0% | 100% |
+| KdVB | 95-100% | 85% | 0% | 100% |
+| FHN | 85-90% | 25% | 0% | 100% |
 
-*L0 SCIP at P≤23 (fast); at P=40, 15-30 min/seed with CoinError crashes on AC, KS.
-L0 CBC crashes on all but KdV/Burgers/KdVB.
+*SCIP works on all PDEs but is 1000× slower than CCP (15-30 min/seed at P=40 vs 0.5 s).
+L0 CBC crashes with CoinError on AC, KS, FHN—use SCIP for MILP.
 
 SignalQR subsampling recovers 31 more seeds than full-data CCP across all benchmarks.
 
