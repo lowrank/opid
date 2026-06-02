@@ -74,6 +74,7 @@ class OperatorIdentifier:
         max_rounds: int = 3,
         cluster_size: int = 8,
         adaptive_groups_lambda: float = 0.5,
+        subsampler = None,
         verbose: bool = False,
     ):
         if method not in ("omp", "lasso", "l0_pareto", "l0_sdp2", "ccp"):
@@ -88,6 +89,7 @@ class OperatorIdentifier:
         self.milp_solver = milp_solver
         self.cluster_size = cluster_size
         self.adaptive_groups_lambda = adaptive_groups_lambda
+        self.subsampler = subsampler
         self.feature_names = feature_names
         self.random_state = random_state
         self.threshold_coef = threshold_coef
@@ -129,6 +131,7 @@ class OperatorIdentifier:
                 max_samples=self.max_samples,
                 milp_solver=self.milp_solver,
                 threshold_coef=self.threshold_coef,
+                subsampler=self.subsampler,
                 random_state=self.random_state,
                 max_rounds=self.max_rounds,
                 verbose=self.verbose,
@@ -139,6 +142,7 @@ class OperatorIdentifier:
                 eps_factor_hi=self.eps_factor_hi,
                 eps_factor_lo=self.eps_factor_lo,
                 max_samples=self.max_samples,
+                subsampler=self.subsampler,
                 random_state=self.random_state,
                 verbose=self.verbose,
             )
@@ -146,6 +150,7 @@ class OperatorIdentifier:
             rec = CCPRecovery(
                 cluster_size=self.cluster_size,
                 threshold_coef=self.threshold_coef,
+                subsampler=self.subsampler,
                 verbose=self.verbose,
                 adaptive_groups_lambda=self.adaptive_groups_lambda,
             )

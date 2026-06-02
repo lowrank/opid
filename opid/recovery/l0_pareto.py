@@ -46,10 +46,13 @@ class L0ParetoRecovery(BaseRecovery):
         except ImportError as e:
             raise ImportError("cvxpy is required for the 'l0_pareto' method.") from e
 
-        rng = np.random.default_rng(self.random_state)
         n = len(y)
         m = min(self.max_samples, n)
-        idx = rng.choice(n, m, replace=False)
+        s = self.subsampler
+        if s is not None:
+            idx = s.select(Theta, m)
+        else:
+            idx = np.arange(m)
         Ts = Theta[idx]
         ys = y[idx]
 

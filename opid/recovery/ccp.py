@@ -8,17 +8,21 @@ from scipy.linalg import eigh
 
 from .base import BaseRecovery, RecoveryResult
 from ._utils import _column_normalise
+from .subsample import Subsampler, QRSubsampler, FullSubsampler
 
 
 class CCPRecovery(BaseRecovery):
     """CCP: spectral clustering + cross-group OLS voting + iterative pruning."""
 
     def __init__(self, cluster_size=8, adaptive_groups_lambda=0.5,
-                 threshold_coef=None, verbose=False, **kwargs):
+                 threshold_coef=None, subsampler=None, max_samples=4000,
+                 verbose=False, **kwargs):
         super().__init__(**kwargs)
         self.cluster_size = cluster_size
         self.adaptive_groups_lambda = adaptive_groups_lambda
         self.threshold_coef = threshold_coef
+        self.subsampler = subsampler
+        self.max_samples = max_samples
         self.verbose = verbose
 
     def _fit(self, Theta, y, names):
@@ -34,13 +38,9 @@ class CCPRecovery(BaseRecovery):
         max_rounds = 10
         prev_n = P + 1
 
-        # Volume-maximizing row subsampling via pivoted QR on Tn^T.
-        # The first m_sub pivot columns of Tn^T are the most linearly
-        # independent rows of Tn — maximizes information content.
-        m_sub = min(4000, n)
-        from scipy.linalg import qr
-        _, _, ridx = qr(Tn[:, active].T, pivoting=True, mode='economic')
-        ridx = np.asarray(ridx[:m_sub], dtype=int)
+        # Row subsampling (default: QR max-volume)
+        s = self.subsampler or QRSubsampler()
+        ridx = s.select(Tn[:, active], self.max_samples)
 
         for rnd in range(max_rounds):
             current_n = len(active)
@@ -50,7 +50,7 @@ class CCPRecovery(BaseRecovery):
 
             Tn_sub = Tn[ridx]
             ys = y[ridx]
-            ns = m_sub
+            ns = len(ridx)
 
             C = np.abs((Tn_sub[:, active].T @ Tn_sub[:, active]) / ns)
             np.fill_diagonal(C, 0)
