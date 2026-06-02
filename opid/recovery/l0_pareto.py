@@ -89,16 +89,59 @@ class L0ParetoRecovery(BaseRecovery):
         eps_hi = noise_floor * self.eps_factor_hi
         eps_lo = noise_floor * self.eps_factor_lo
 
-        def _solve(eps_val):
-            eps_param.value = eps_val
-            try:
-                prob.solve(solver=getattr(cp, self.milp_solver), warm_start=False)
-            except Exception:
+        # CoinError-safe solve: when using CBC, run each MILP in a
+        # subprocess via _milp_worker, since CBC's C++ `terminate()`
+        # kills the Python process.  SCIP and other solvers are safe
+        # to call in-process.
+        if self.milp_solver == "CBC":
+            import subprocess, sys, json, tempfile, os
+
+            worker_file = None
+            prob_cache = {
+                "Theta": Ts_norm.tolist(),
+                "y": ys.tolist(),
+                "M": M_vec.tolist(),
+                "col_scales": col_scales.flatten().tolist(),
+            }
+            # Write problem data once, reuse file
+            worker_file = tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            )
+            json.dump({"eps": 0.0, **prob_cache}, worker_file)
+            worker_path = worker_file.name
+
+            def _solve(eps_val):
+                # Update eps in the file and run worker
+                with open(worker_path, "w") as f:
+                    json.dump({"eps": float(eps_val), **prob_cache}, f)
+                try:
+                    result = subprocess.run(
+                        [sys.executable, "-m", "opid.recovery._milp_worker", worker_path],
+                        capture_output=True, text=True, timeout=120,
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        data = json.loads(result.stdout.strip())
+                        z_vals = data["z"]
+                        xi_vals = np.array(data["xi"]) / col_scales.flatten()
+                        if len(z_vals) > 0:
+                            supp = frozenset(i for i in range(len(z_vals)) if z_vals[i] > 0.5)
+                            return supp, xi_vals
+                except (subprocess.TimeoutExpired, Exception):
+                    pass
                 return None, None
-            if prob.status in ("optimal", "optimal_inaccurate"):
-                supp = frozenset(i for i in range(P) if float(z_var.value[i]) > 0.5)
-                return supp, xi_var.value / col_scales.flatten()
-            return None, None
+
+        else:
+
+            def _solve(eps_val):
+                eps_param.value = eps_val
+                try:
+                    prob.solve(solver=getattr(cp, self.milp_solver), warm_start=False)
+                except Exception:
+                    return None, None
+                if prob.status in ("optimal", "optimal_inaccurate"):
+                    supp = frozenset(i for i in range(P) if float(z_var.value[i]) > 0.5)
+                    return supp, xi_var.value / col_scales.flatten()
+                return None, None
 
         sl, _ = _solve(eps_lo)
         while sl is None and eps_lo < eps_hi * 0.9:

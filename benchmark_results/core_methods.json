@@ -13480,9 +13480,13 @@
     "P": 40
   },
   "AC_seed8|L|L0_CBC": {
-    "J": -1,
-    "error": "CoinError crash",
-    "time": 0,
+    "J": 1.0,
+    "support": [
+      "u",
+      "u^3",
+      "u_xx"
+    ],
+    "time": 23.976428031921387,
     "P": 40
   },
   "AC_seed9|L|L0_CBC": {
@@ -13496,9 +13500,13 @@
     "P": 40
   },
   "AC_seed10|L|L0_CBC": {
-    "J": -1,
-    "error": "CoinError crash",
-    "time": 0,
+    "J": 1.0,
+    "support": [
+      "u",
+      "u^3",
+      "u_xx"
+    ],
+    "time": 71.07080030441284,
     "P": 40
   },
   "AC_seed11|L|L0_CBC": {
@@ -13542,9 +13550,13 @@
     "P": 40
   },
   "AC_seed15|L|L0_CBC": {
-    "J": -1,
-    "error": "CoinError crash",
-    "time": 0,
+    "J": 1.0,
+    "support": [
+      "u",
+      "u^3",
+      "u_xx"
+    ],
+    "time": 95.82429218292236,
     "P": 40
   },
   "AC_seed16|L|L0_CBC": {
