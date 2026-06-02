@@ -8,7 +8,7 @@ from scipy.linalg import eigh
 
 from .base import BaseRecovery, RecoveryResult
 from ._utils import _column_normalise
-from .subsample import Subsampler, QRSubsampler, FullSubsampler
+from .subsample import Subsampler, RandomSubsampler, FullSubsampler, QRSubsampler
 
 
 class CCPRecovery(BaseRecovery):
@@ -38,8 +38,8 @@ class CCPRecovery(BaseRecovery):
         max_rounds = 10
         prev_n = P + 1
 
-        # Row subsampling (default: QR max-volume)
-        s = self.subsampler or QRSubsampler()
+        # Row subsampling (default: random 4000 rows)
+        s = self.subsampler or RandomSubsampler(seed=42)
         ridx = s.select(Tn[:, active], self.max_samples)
 
         for rnd in range(max_rounds):
