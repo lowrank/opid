@@ -144,7 +144,6 @@ class L0ParetoRecovery(BaseRecovery):
             if self.verbose:
                 print(f"  [CBC subprocess] {len(pairs)} sparsity levels")
 
-            from ._utils import _find_plateau_runs
             runs = _find_plateau_runs(supports_raw, valid_eps)
             non_trivial = [(s, e, supp) for s, e, supp in runs if len(supp) > 0] or runs
             rec_s, rec_e, rec_supp = min(non_trivial, key=lambda r: valid_eps[r[0]])
@@ -203,6 +202,18 @@ class L0ParetoRecovery(BaseRecovery):
             )
 
         # ── In-process solve (SCIP, GLPK, etc.) ────────────────────
+
+        def _solve(eps_val):
+            eps_param.value = eps_val
+            try:
+                prob.solve(solver=getattr(cp, self.milp_solver), warm_start=False)
+            except Exception:
+                return None, None
+            if prob.status in ("optimal", "optimal_inaccurate"):
+                supp = frozenset(i for i in range(P) if float(z_var.value[i]) > 0.5)
+                return supp, xi_var.value / col_scales.flatten()
+            return None, None
+
         eps_hi = noise_floor * self.eps_factor_hi
         eps_lo = noise_floor * self.eps_factor_lo
 
