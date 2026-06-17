@@ -108,11 +108,12 @@ opid/
 
 ## Benchmarks
 
-Full benchmarks across 7 PDEs, 16 library sizes (P=12 to P=196), 20 seeds:
+Full benchmarks across 7 PDEs, S/M/L/XL library sizes, 20 seeds:
 ```bash
-python experiments/core_methods.py      # CCP, OMP, Lasso at S/M/L/XL
-python experiments/ccp_scaling.py       # CCP across all library sizes
-python experiments/subsample_compare.py # Compare subsampling strategies
+python experiments/generate_data.py      # Generate simulation data first
+python experiments/core_methods.py       # CCP, OMP, Lasso at S/M/L/XL
+python experiments/ccp_scaling.py        # CCP across all library sizes
+python experiments/subsample_compare.py  # Compare subsampling strategies
 ```
 
 Results are saved to `benchmark_results/`.
