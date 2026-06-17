@@ -8,4 +8,3 @@ build/
 dist/
 .cache/
 *.o
-benchmark_data/
